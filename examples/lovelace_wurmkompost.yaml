@@ -1,0 +1,55 @@
+type: vertical-stack
+cards:
+  - type: gauge
+    entity: sensor.wurmkompost_temperatur
+    name: Wurmtemperatur
+    min: -5
+    max: 40
+    needle: true
+    severity:
+      green: 18
+      yellow: 26
+      red: 35
+
+  - type: markdown
+    content: >-
+      {% set emoji = states('sensor.wurmkompost_wurmgesicht') %}
+      {% set stimmung = states('sensor.wurmkompost_wurmstimmung') %}
+      {% set status = states('sensor.wurmkompost_status') %}
+      {% set botschaft = state_attr('sensor.wurmkompost_wurmstimmung', 'botschaft') %}
+      {% set empfehlung = state_attr('sensor.wurmkompost_status', 'empfehlung') %}
+      # {{ emoji }} {{ stimmung }}
+      **{{ status }}**
+      
+      {{ botschaft }}
+      
+      _Tipp: {{ empfehlung }}_
+
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.wurmkompost_status
+        name: Status
+      - type: tile
+        entity: sensor.wurmkompost_wetterwarnung
+        name: Wetterwarnung
+      - type: tile
+        entity: sensor.wurmkompost_prognose_minimum
+        name: Prognose Minimum
+      - type: tile
+        entity: sensor.wurmkompost_prognose_maximum
+        name: Prognose Maximum
+      - type: tile
+        entity: binary_sensor.wurmkompost_frostalarm
+        name: Frostalarm
+      - type: tile
+        entity: binary_sensor.wurmkompost_hitzealarm
+        name: Hitzealarm
+      - type: tile
+        entity: binary_sensor.wurmkompost_kaeltewarnung
+        name: Kältewarnung
+      - type: tile
+        entity: binary_sensor.wurmkompost_hitzewarnung
+        name: Hitzewarnung

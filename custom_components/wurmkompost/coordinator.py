@@ -43,7 +43,12 @@ from .const import (
     FORECAST_HEAT_DEATH,
     FORECAST_LABELS,
     FORECAST_NONE,
+    MOOD_BY_STATUS,
+    MOOD_EMOJIS,
+    MOOD_LABELS,
+    MOOD_MESSAGES,
     STATUS_COLD,
+    STATUS_COLORS,
     STATUS_COMFORT,
     STATUS_COOL,
     STATUS_FREEZE,
@@ -70,6 +75,11 @@ class WurmKompostData:
     status_key: str
     status_label: str
     recommendation: str
+    status_color: str
+    mood_key: str
+    mood_label: str
+    mood_emoji: str
+    mood_message: str
     forecast_warning_key: str
     forecast_warning_label: str
     forecast_min_c: float | None
@@ -146,6 +156,7 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
             current_state.state, current_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
         )
         status_key = self._classify_current_temp(current_temp_c)
+        mood_key = MOOD_BY_STATUS[status_key]
 
         forecast_min_c: float | None = None
         forecast_max_c: float | None = None
@@ -209,6 +220,11 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
             status_key=status_key,
             status_label=STATUS_LABELS[status_key],
             recommendation=STATUS_RECOMMENDATIONS[status_key],
+            status_color=STATUS_COLORS[status_key],
+            mood_key=mood_key,
+            mood_label=MOOD_LABELS[mood_key],
+            mood_emoji=MOOD_EMOJIS[mood_key],
+            mood_message=MOOD_MESSAGES[mood_key],
             forecast_warning_key=forecast_warning_key,
             forecast_warning_label=FORECAST_LABELS[forecast_warning_key],
             forecast_min_c=forecast_min_c,
@@ -252,7 +268,9 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
     def _classify_forecast(self, forecast_min_c: float | None, forecast_max_c: float | None) -> str:
         """Classify forecast-based warnings."""
         freeze_temp = float(self._get_option(CONF_FREEZE_TEMP, DEFAULT_FREEZE_TEMP))
-        cold_warning_buffer = float(self._get_option(CONF_COLD_WARNING_BUFFER, DEFAULT_COLD_WARNING_BUFFER))
+        cold_warning_buffer = float(
+            self._get_option(CONF_COLD_WARNING_BUFFER, DEFAULT_COLD_WARNING_BUFFER)
+        )
         heat_warning_temp = float(self._get_option(CONF_HEAT_WARNING_TEMP, DEFAULT_HEAT_WARNING_TEMP))
         fatal_heat_temp = float(self._get_option(CONF_FATAL_HEAT_TEMP, DEFAULT_FATAL_HEAT_TEMP))
 

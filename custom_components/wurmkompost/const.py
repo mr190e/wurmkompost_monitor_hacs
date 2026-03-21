@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+
 from homeassistant.const import Platform
 
 DOMAIN = "wurmkompost"
@@ -46,6 +47,15 @@ FORECAST_COLD = "kaeltewarnung"
 FORECAST_FREEZE = "frostwarnung"
 FORECAST_HEAT = "hitzewarnung"
 FORECAST_HEAT_DEATH = "extreme_hitzewarnung"
+
+MOOD_FREEZE = "erfrierend"
+MOOD_COLD = "frierend"
+MOOD_COOL = "froestelnd"
+MOOD_COMFORT = "zufrieden"
+MOOD_WARM = "leicht_warm"
+MOOD_HOT = "schwitzend"
+MOOD_HEAT_DEATH = "notfall"
+MOOD_UNKNOWN = "unklar"
 
 STATUS_ORDER = [
     STATUS_FREEZE,
@@ -97,6 +107,61 @@ STATUS_RECOMMENDATIONS: dict[str, str] = {
     STATUS_HOT: "Kühlen, beschatten und Hitzestau vermeiden.",
     STATUS_HEAT_DEATH: "Sofort handeln: Kühlen und Hitzestau beenden.",
     STATUS_UNKNOWN: "Temperatursensor prüfen.",
+}
+
+STATUS_COLORS: dict[str, str] = {
+    STATUS_FREEZE: "#1e88e5",
+    STATUS_COLD: "#42a5f5",
+    STATUS_COOL: "#ffd54f",
+    STATUS_COMFORT: "#43a047",
+    STATUS_WARM: "#ffb300",
+    STATUS_HOT: "#fb8c00",
+    STATUS_HEAT_DEATH: "#e53935",
+    STATUS_UNKNOWN: "#9e9e9e",
+}
+
+MOOD_BY_STATUS: dict[str, str] = {
+    STATUS_FREEZE: MOOD_FREEZE,
+    STATUS_COLD: MOOD_COLD,
+    STATUS_COOL: MOOD_COOL,
+    STATUS_COMFORT: MOOD_COMFORT,
+    STATUS_WARM: MOOD_WARM,
+    STATUS_HOT: MOOD_HOT,
+    STATUS_HEAT_DEATH: MOOD_HEAT_DEATH,
+    STATUS_UNKNOWN: MOOD_UNKNOWN,
+}
+
+MOOD_LABELS: dict[str, str] = {
+    MOOD_FREEZE: "Erfrierend",
+    MOOD_COLD: "Frierend",
+    MOOD_COOL: "Fröstelnd",
+    MOOD_COMFORT: "Zufrieden",
+    MOOD_WARM: "Leicht warm",
+    MOOD_HOT: "Schwitzend",
+    MOOD_HEAT_DEATH: "Notfall",
+    MOOD_UNKNOWN: "Unklar",
+}
+
+MOOD_EMOJIS: dict[str, str] = {
+    MOOD_FREEZE: "🪱🥶",
+    MOOD_COLD: "🪱🧥",
+    MOOD_COOL: "🪱🙂",
+    MOOD_COMFORT: "🪱😄",
+    MOOD_WARM: "🪱😅",
+    MOOD_HOT: "🪱🥵",
+    MOOD_HEAT_DEATH: "🪱🔥",
+    MOOD_UNKNOWN: "🪱❓",
+}
+
+MOOD_MESSAGES: dict[str, str] = {
+    MOOD_FREEZE: "Notfall: Die Würmer erfrieren, wenn du nicht sofort eingreifst.",
+    MOOD_COLD: "Den Würmern ist deutlich zu kalt und sie werden träge.",
+    MOOD_COOL: "Etwas frisch, aber noch im tolerierbaren Bereich.",
+    MOOD_COMFORT: "So mögen es die Würmer am liebsten.",
+    MOOD_WARM: "Schon recht warm, bitte im Blick behalten.",
+    MOOD_HOT: "Die Würmer schwitzen bildlich gesprochen schon – jetzt gegensteuern.",
+    MOOD_HEAT_DEATH: "Notfall: Akute Überhitzung, sofort kühlen.",
+    MOOD_UNKNOWN: "Keine verlässlichen Messdaten verfügbar.",
 }
 
 FORECAST_LABELS: dict[str, str] = {

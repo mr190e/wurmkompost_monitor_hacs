@@ -22,6 +22,8 @@ async def async_setup_entry(
         [
             WurmCurrentTemperatureSensor(coordinator),
             WurmStatusSensor(coordinator),
+            WurmMoodSensor(coordinator),
+            WurmEmojiSensor(coordinator),
             WurmForecastWarningSensor(coordinator),
             WurmForecastMinSensor(coordinator),
             WurmForecastMaxSensor(coordinator),
@@ -47,6 +49,9 @@ class WurmCurrentTemperatureSensor(WurmKompostEntity, SensorEntity):
         return {
             "quelle": self.coordinator.data.temperature_entity,
             "status": self.coordinator.data.status_label,
+            "farbe": self.coordinator.data.status_color,
+            "wurm_emoji": self.coordinator.data.mood_emoji,
+            "wurmstimmung": self.coordinator.data.mood_label,
         }
 
 
@@ -74,6 +79,50 @@ class WurmStatusSensor(WurmKompostEntity, SensorEntity):
             "prognose_maximum_c": self.coordinator.data.forecast_max_c,
             "prognose_minimum_zeit": self.coordinator.data.forecast_min_at,
             "prognose_maximum_zeit": self.coordinator.data.forecast_max_at,
+            "farbe": self.coordinator.data.status_color,
+            "wurm_emoji": self.coordinator.data.mood_emoji,
+            "wurmstimmung": self.coordinator.data.mood_label,
+            "wurm_botschaft": self.coordinator.data.mood_message,
+        }
+
+
+class WurmMoodSensor(WurmKompostEntity, SensorEntity):
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "mood", "Wurmstimmung")
+        self._attr_icon = "mdi:emoticon-excited-outline"
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.data.mood_label
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "emoji": self.coordinator.data.mood_emoji,
+            "botschaft": self.coordinator.data.mood_message,
+            "status": self.coordinator.data.status_label,
+            "farbe": self.coordinator.data.status_color,
+            "empfehlung": self.coordinator.data.recommendation,
+        }
+
+
+class WurmEmojiSensor(WurmKompostEntity, SensorEntity):
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "emoji", "Wurmgesicht")
+        self._attr_icon = "mdi:worm"
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.data.mood_emoji
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "wurmstimmung": self.coordinator.data.mood_label,
+            "botschaft": self.coordinator.data.mood_message,
+            "status": self.coordinator.data.status_label,
+            "temperatur_c": self.coordinator.data.current_temp_c,
+            "farbe": self.coordinator.data.status_color,
         }
 
 

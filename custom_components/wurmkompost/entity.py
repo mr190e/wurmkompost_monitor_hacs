@@ -24,5 +24,5 @@ class WurmKompostEntity(CoordinatorEntity[WurmKompostCoordinator]):
             name=self.coordinator.compost_name,
             manufacturer="Custom / HACS",
             model="Wurmkompost Monitor",
-            configuration_url="https://github.com/USER/wurmkompost",
+            configuration_url="https://github.com/mr190e/wurmkompost_monitor_hacs",
         )
