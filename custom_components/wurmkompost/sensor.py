@@ -4,6 +4,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import FORECAST_ICONS, STATUS_ICONS
@@ -107,6 +108,9 @@ class WurmMoodSensor(WurmKompostEntity, SensorEntity):
 
 
 class WurmEmojiSensor(WurmKompostEntity, SensorEntity):
+    _attr_entity_registry_enabled_default = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
     def __init__(self, coordinator: WurmKompostCoordinator) -> None:
         super().__init__(coordinator, "emoji", "Wurmgesicht")
         self._attr_icon = "mdi:worm"

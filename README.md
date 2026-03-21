@@ -4,12 +4,12 @@ HACS Custom Integration für Home Assistant Core / Container / OS.
 
 Diese Integration bewertet die Temperatur in deinem Wurmgefäß und kombiniert sie mit der Wettervorhersage, um frühzeitig vor Kälte und Hitze zu warnen.
 
-## Neu in Version 0.2.0
+## Neu in Version 0.2.1
 
-- **Wurmstimmung** als eigene Entität
-- **Wurmgesicht** als Emoji-Entität für eine spielerische Anzeige
-- zusätzliche Attribute für **Farbe**, **Emoji** und **Wurm-Botschaft**
-- Lovelace-Beispiel für eine deutlich **grafischere Darstellung** mit Gauge, Status und Emoji
+- vereinfachte Lovelace-Vorlage mit **einer großen Wurmkarte** statt vieler Technik-Kacheln
+- **Alarme nur noch bei Bedarf** in der Beispielansicht
+- `Wurmgesicht` standardmäßig **deaktiviert**, damit dein Dashboard und die Geräteseite ruhiger bleiben
+- README und Beispielansicht auf die kompakte Darstellung angepasst
 
 ## Funktionen
 
@@ -35,7 +35,7 @@ Diese Integration bewertet die Temperatur in deinem Wurmgefäß und kombiniert s
 - `sensor.<name>_temperatur`
 - `sensor.<name>_status`
 - `sensor.<name>_wurmstimmung`
-- `sensor.<name>_wurmgesicht`
+- `sensor.<name>_wurmgesicht` *(standardmäßig deaktiviert, optional für Templates)*
 - `sensor.<name>_wetterwarnung`
 - `sensor.<name>_prognose_minimum`
 - `sensor.<name>_prognose_maximum`
@@ -74,8 +74,9 @@ Eine fertige Vorlage findest du in `examples/lovelace_wurmkompost.yaml`.
 Die Vorlage nutzt nur Standard-Karten und zeigt:
 
 - oben eine **Gauge** für die Temperatur
-- darunter eine **große Emoji-/Stimmungsanzeige**
-- darunter Status, Wetterwarnung und Alarme als Grid
+- darunter eine **große Wurmkarte** mit Emoji, Stimmung und Botschaft
+- darunter nur die wirklich wichtigen Informationen
+- Warn- und Alarmkarten **nur dann, wenn sie aktiv sind**
 
 ## Hinweise
 
@@ -83,6 +84,7 @@ Die Vorlage nutzt nur Standard-Karten und zeigt:
 - Alle eigenen Temperaturwerte werden intern als **°C** geführt.
 - Wenn dein Temperatursensor in `°F` misst, wird er automatisch nach `°C` umgerechnet.
 - Die grafische Darstellung entsteht in Lovelace; die Integration liefert dafür die zusätzlichen Entitäten und Attribute.
+- Wenn du `sensor.<name>_wurmgesicht` im Dashboard direkt verwenden willst, kannst du die Entität in der Registry wieder aktivieren.
 
 ## Repository-Struktur
 
