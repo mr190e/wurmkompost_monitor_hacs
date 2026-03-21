@@ -1,0 +1,7 @@
+{
+  "name": "Wurmkompost Monitor",
+  "country": ["DE", "AT", "CH"],
+  "homeassistant": ">=2025.7.0",
+  "render_readme": true,
+  "zip_release": false
+}
