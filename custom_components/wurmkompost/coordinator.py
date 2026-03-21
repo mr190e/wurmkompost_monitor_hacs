@@ -1,0 +1,309 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+import logging
+from typing import Any, Callable
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT, UnitOfTemperature
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
+from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
+from homeassistant.util.unit_conversion import TemperatureConverter
+
+from .const import (
+    CONF_COLD_TEMP,
+    CONF_COLD_WARNING_BUFFER,
+    CONF_COMFORT_MAX_TEMP,
+    CONF_COMFORT_MIN_TEMP,
+    CONF_COMPOST_NAME,
+    CONF_FATAL_HEAT_TEMP,
+    CONF_FORECAST_HOURS,
+    CONF_FREEZE_TEMP,
+    CONF_HEAT_WARNING_TEMP,
+    CONF_TEMPERATURE_SENSOR,
+    CONF_WARM_TEMP,
+    CONF_WEATHER_ENTITY,
+    DEFAULT_COLD_TEMP,
+    DEFAULT_COLD_WARNING_BUFFER,
+    DEFAULT_COMFORT_MAX_TEMP,
+    DEFAULT_COMFORT_MIN_TEMP,
+    DEFAULT_COMPOST_NAME,
+    DEFAULT_FATAL_HEAT_TEMP,
+    DEFAULT_FORECAST_HOURS,
+    DEFAULT_FREEZE_TEMP,
+    DEFAULT_HEAT_WARNING_TEMP,
+    DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_WARM_TEMP,
+    FORECAST_COLD,
+    FORECAST_FREEZE,
+    FORECAST_HEAT,
+    FORECAST_HEAT_DEATH,
+    FORECAST_LABELS,
+    FORECAST_NONE,
+    STATUS_COLD,
+    STATUS_COMFORT,
+    STATUS_COOL,
+    STATUS_FREEZE,
+    STATUS_HEAT_DEATH,
+    STATUS_HOT,
+    STATUS_LABELS,
+    STATUS_RECOMMENDATIONS,
+    STATUS_UNKNOWN,
+    STATUS_WARM,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class WurmKompostData:
+    """Runtime data for the Wurmkompost integration."""
+
+    compost_name: str
+    temperature_entity: str
+    weather_entity: str
+    current_temp_c: float | None
+    current_temp_source_unit: str | None
+    status_key: str
+    status_label: str
+    recommendation: str
+    forecast_warning_key: str
+    forecast_warning_label: str
+    forecast_min_c: float | None
+    forecast_max_c: float | None
+    forecast_min_at: str | None
+    forecast_max_at: str | None
+    hours_to_forecast_min: float | None
+    hours_to_forecast_max: float | None
+    frost_alarm: bool
+    heat_alarm: bool
+    forecast_cold_warning: bool
+    forecast_heat_warning: bool
+
+
+class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
+    """Coordinate Wurmkompost data updates."""
+
+    config_entry: ConfigEntry
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize the coordinator."""
+        self.config_entry = entry
+        self._unsubscribers: list[Callable[[], None]] = []
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"wurmkompost_{entry.entry_id}",
+            update_interval=DEFAULT_UPDATE_INTERVAL,
+        )
+
+    @property
+    def compost_name(self) -> str:
+        return str(self._get_option(CONF_COMPOST_NAME, DEFAULT_COMPOST_NAME))
+
+    @property
+    def temperature_entity(self) -> str:
+        return str(self._get_option(CONF_TEMPERATURE_SENSOR, ""))
+
+    @property
+    def weather_entity(self) -> str:
+        return str(self._get_option(CONF_WEATHER_ENTITY, ""))
+
+    async def async_start(self) -> None:
+        """Start listeners for faster updates."""
+
+        @callback
+        def _handle_source_change(event: Event[EventStateChangedData]) -> None:
+            entity_id = event.data["entity_id"]
+            _LOGGER.debug("Source entity changed: %s", entity_id)
+            self.hass.async_create_task(self.async_request_refresh())
+
+        self._unsubscribers.append(
+            async_track_state_change_event(
+                self.hass,
+                [self.temperature_entity, self.weather_entity],
+                _handle_source_change,
+            )
+        )
+
+    async def async_shutdown(self) -> None:
+        """Cancel listeners when unloading."""
+        while self._unsubscribers:
+            unsubscribe = self._unsubscribers.pop()
+            unsubscribe()
+
+    async def _async_update_data(self) -> WurmKompostData:
+        """Fetch and normalize current compost and forecast data."""
+        current_state = self.hass.states.get(self.temperature_entity)
+        if current_state is None:
+            raise UpdateFailed(f"Temperature entity not found: {self.temperature_entity}")
+
+        current_temp_c = _state_to_celsius(
+            current_state.state, current_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+        )
+        status_key = self._classify_current_temp(current_temp_c)
+
+        forecast_min_c: float | None = None
+        forecast_max_c: float | None = None
+        forecast_min_at: str | None = None
+        forecast_max_at: str | None = None
+        hours_to_forecast_min: float | None = None
+        hours_to_forecast_max: float | None = None
+        forecast_warning_key = FORECAST_NONE
+
+        weather_state = self.hass.states.get(self.weather_entity)
+        weather_unit = weather_state.attributes.get("temperature_unit") if weather_state else None
+
+        try:
+            response = await self.hass.services.async_call(
+                "weather",
+                "get_forecasts",
+                {
+                    "entity_id": [self.weather_entity],
+                    "type": "hourly",
+                },
+                blocking=True,
+                return_response=True,
+            )
+        except Exception as err:  # pragma: no cover - defensive for runtime HA differences
+            _LOGGER.warning("Unable to fetch weather forecast for %s: %s", self.weather_entity, err)
+            response = None
+
+        forecast_items = []
+        if isinstance(response, dict):
+            forecast_items = response.get(self.weather_entity, {}).get("forecast", []) or []
+
+        forecast_hours = int(self._get_option(CONF_FORECAST_HOURS, DEFAULT_FORECAST_HOURS))
+        sliced_items = forecast_items[:forecast_hours]
+
+        converted_forecasts: list[tuple[datetime | None, float]] = []
+        for item in sliced_items:
+            raw_temp = item.get("temperature")
+            temp_c = _to_celsius(raw_temp, weather_unit)
+            if temp_c is None:
+                continue
+            when = dt_util.parse_datetime(item.get("datetime")) if item.get("datetime") else None
+            converted_forecasts.append((when, temp_c))
+
+        if converted_forecasts:
+            min_item = min(converted_forecasts, key=lambda item: item[1])
+            max_item = max(converted_forecasts, key=lambda item: item[1])
+            forecast_min_c = round(min_item[1], 1)
+            forecast_max_c = round(max_item[1], 1)
+            forecast_min_at = min_item[0].isoformat() if min_item[0] else None
+            forecast_max_at = max_item[0].isoformat() if max_item[0] else None
+            hours_to_forecast_min = _hours_until(min_item[0])
+            hours_to_forecast_max = _hours_until(max_item[0])
+            forecast_warning_key = self._classify_forecast(forecast_min_c, forecast_max_c)
+
+        return WurmKompostData(
+            compost_name=self.compost_name,
+            temperature_entity=self.temperature_entity,
+            weather_entity=self.weather_entity,
+            current_temp_c=None if current_temp_c is None else round(current_temp_c, 1),
+            current_temp_source_unit=current_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT),
+            status_key=status_key,
+            status_label=STATUS_LABELS[status_key],
+            recommendation=STATUS_RECOMMENDATIONS[status_key],
+            forecast_warning_key=forecast_warning_key,
+            forecast_warning_label=FORECAST_LABELS[forecast_warning_key],
+            forecast_min_c=forecast_min_c,
+            forecast_max_c=forecast_max_c,
+            forecast_min_at=forecast_min_at,
+            forecast_max_at=forecast_max_at,
+            hours_to_forecast_min=hours_to_forecast_min,
+            hours_to_forecast_max=hours_to_forecast_max,
+            frost_alarm=status_key == STATUS_FREEZE,
+            heat_alarm=status_key == STATUS_HEAT_DEATH,
+            forecast_cold_warning=forecast_warning_key in {FORECAST_COLD, FORECAST_FREEZE},
+            forecast_heat_warning=forecast_warning_key in {FORECAST_HEAT, FORECAST_HEAT_DEATH},
+        )
+
+    def _classify_current_temp(self, current_temp_c: float | None) -> str:
+        """Classify the current compost temperature."""
+        if current_temp_c is None:
+            return STATUS_UNKNOWN
+
+        freeze_temp = float(self._get_option(CONF_FREEZE_TEMP, DEFAULT_FREEZE_TEMP))
+        cold_temp = float(self._get_option(CONF_COLD_TEMP, DEFAULT_COLD_TEMP))
+        comfort_min = float(self._get_option(CONF_COMFORT_MIN_TEMP, DEFAULT_COMFORT_MIN_TEMP))
+        comfort_max = float(self._get_option(CONF_COMFORT_MAX_TEMP, DEFAULT_COMFORT_MAX_TEMP))
+        warm_temp = float(self._get_option(CONF_WARM_TEMP, DEFAULT_WARM_TEMP))
+        fatal_heat_temp = float(self._get_option(CONF_FATAL_HEAT_TEMP, DEFAULT_FATAL_HEAT_TEMP))
+
+        if current_temp_c <= freeze_temp:
+            return STATUS_FREEZE
+        if current_temp_c < cold_temp:
+            return STATUS_COLD
+        if current_temp_c < comfort_min:
+            return STATUS_COOL
+        if current_temp_c <= comfort_max:
+            return STATUS_COMFORT
+        if current_temp_c <= warm_temp:
+            return STATUS_WARM
+        if current_temp_c <= fatal_heat_temp:
+            return STATUS_HOT
+        return STATUS_HEAT_DEATH
+
+    def _classify_forecast(self, forecast_min_c: float | None, forecast_max_c: float | None) -> str:
+        """Classify forecast-based warnings."""
+        freeze_temp = float(self._get_option(CONF_FREEZE_TEMP, DEFAULT_FREEZE_TEMP))
+        cold_warning_buffer = float(self._get_option(CONF_COLD_WARNING_BUFFER, DEFAULT_COLD_WARNING_BUFFER))
+        heat_warning_temp = float(self._get_option(CONF_HEAT_WARNING_TEMP, DEFAULT_HEAT_WARNING_TEMP))
+        fatal_heat_temp = float(self._get_option(CONF_FATAL_HEAT_TEMP, DEFAULT_FATAL_HEAT_TEMP))
+
+        if forecast_min_c is not None and forecast_min_c <= freeze_temp:
+            return FORECAST_FREEZE
+        if forecast_max_c is not None and forecast_max_c > fatal_heat_temp:
+            return FORECAST_HEAT_DEATH
+        if forecast_min_c is not None and forecast_min_c <= freeze_temp + cold_warning_buffer:
+            return FORECAST_COLD
+        if forecast_max_c is not None and forecast_max_c >= heat_warning_temp:
+            return FORECAST_HEAT
+        return FORECAST_NONE
+
+    def _get_option(self, key: str, default: Any) -> Any:
+        """Get a config value with options overriding data."""
+        return self.config_entry.options.get(key, self.config_entry.data.get(key, default))
+
+
+def _normalize_unit(unit: str | None) -> str | None:
+    if unit is None:
+        return None
+    normalized = str(unit).strip().lower()
+    if normalized in {"°c", "c", "celsius"}:
+        return UnitOfTemperature.CELSIUS
+    if normalized in {"°f", "f", "fahrenheit"}:
+        return UnitOfTemperature.FAHRENHEIT
+    return None
+
+
+def _to_celsius(value: Any, unit: str | None) -> float | None:
+    """Convert a temperature value to celsius."""
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    normalized = _normalize_unit(unit)
+    if normalized is None or normalized == UnitOfTemperature.CELSIUS:
+        return numeric
+
+    return float(TemperatureConverter.convert(numeric, normalized, UnitOfTemperature.CELSIUS))
+
+
+def _state_to_celsius(state: str | None, unit: str | None) -> float | None:
+    if state in {None, "unknown", "unavailable", "none"}:
+        return None
+    return _to_celsius(state, unit)
+
+
+def _hours_until(when: datetime | None) -> float | None:
+    if when is None:
+        return None
+    now = dt_util.now()
+    return round((when - now).total_seconds() / 3600, 1)

@@ -1,0 +1,11 @@
+{
+  "domain": "wurmkompost",
+  "name": "Wurmkompost Monitor",
+  "version": "0.1.0",
+  "documentation": "https://github.com/USER/wurmkompost",
+  "issue_tracker": "https://github.com/USER/wurmkompost/issues",
+  "codeowners": ["@USER"],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "requirements": []
+}
