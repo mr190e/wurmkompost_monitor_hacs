@@ -1,0 +1,43 @@
+{
+  "title": "Wurmkompost Monitor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up worm compost monitor",
+        "description": "Choose a temperature sensor and a weather entity for early warnings.",
+        "data": {
+          "name": "Name",
+          "temperature_sensor": "Temperature sensor",
+          "weather_entity": "Weather entity"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This temperature sensor and weather entity combination is already configured.",
+      "no_temperature_sensors": "No suitable temperature sensors were found.",
+      "no_weather_entities": "No weather entities were found."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Worm compost options",
+        "description": "Adjust entities and temperature thresholds.",
+        "data": {
+          "compost_name": "Name",
+          "temperature_sensor": "Temperature sensor",
+          "weather_entity": "Weather entity",
+          "freeze_temp": "Freezing alarm at or below (°C)",
+          "cold_temp": "Too cold below (°C)",
+          "comfort_min_temp": "Comfort starts at (°C)",
+          "comfort_max_temp": "Comfort ends at (°C)",
+          "warm_temp": "Warm up to (°C)",
+          "fatal_heat_temp": "Fatal heat above (°C)",
+          "forecast_hours": "Forecast horizon (hours)",
+          "cold_warning_buffer": "Cold warning buffer above freezing (°C)",
+          "heat_warning_temp": "Heat warning at or above (°C)"
+        }
+      }
+    }
+  }
+}

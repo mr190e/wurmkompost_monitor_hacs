@@ -1,1 +1,43 @@
-
+{
+  "title": "Wurmkompost Monitor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Wurmkompost einrichten",
+        "description": "Wähle einen Temperatursensor und eine Wetter-Entität für die Vorwarnung.",
+        "data": {
+          "name": "Name",
+          "temperature_sensor": "Temperatursensor",
+          "weather_entity": "Wetter-Entität"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Diese Kombination aus Temperatursensor und Wetter-Entität ist bereits eingerichtet.",
+      "no_temperature_sensors": "Es wurden keine geeigneten Temperatursensoren gefunden.",
+      "no_weather_entities": "Es wurden keine Wetter-Entitäten gefunden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Wurmkompost Optionen",
+        "description": "Passe Sensoren und Temperaturgrenzen an.",
+        "data": {
+          "compost_name": "Name",
+          "temperature_sensor": "Temperatursensor",
+          "weather_entity": "Wetter-Entität",
+          "freeze_temp": "Erfrierungsgrenze (°C)",
+          "cold_temp": "Zu kalt unter (°C)",
+          "comfort_min_temp": "Wohlfühlbereich ab (°C)",
+          "comfort_max_temp": "Wohlfühlbereich bis (°C)",
+          "warm_temp": "Warm bis (°C)",
+          "fatal_heat_temp": "Hitzetod ab (°C)",
+          "forecast_hours": "Vorhersagehorizont (Stunden)",
+          "cold_warning_buffer": "Kältewarnpuffer über Frost (°C)",
+          "heat_warning_temp": "Hitzewarnung ab (°C)"
+        }
+      }
+    }
+  }
+}
