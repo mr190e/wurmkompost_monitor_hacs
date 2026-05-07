@@ -4,6 +4,11 @@ HACS Custom Integration für Home Assistant Core / Container / OS.
 
 Diese Integration bewertet **Temperatur und Feuchtigkeit** in deinem Wurmgefäß und kombiniert die Werte mit der Wettervorhersage **inklusive Sonnen-Uplift**, um frühzeitig vor Kälte, Hitze, Vertrocknung und Staunässe zu warnen.
 
+## Neu in Version 0.4.1
+
+- Realistischere Default-Schwellen für Luftfeuchte-Sensoren in der Kiste (`air_in_bin`): Wohlfühlbereich jetzt 65–92 % statt 85–95 %, weil ein belüfteter Behälter über feuchtem Substrat normal bei 65–80 % RH liegt
+- README-Erklärung zur Luftfeuchte als indirektem Indikator ergänzt
+
 ## Neu in Version 0.4.0
 
 - **Standort-Dropdown** (Schatten, Halbschatten, volle Sonne) – bezieht Sonneneinstrahlung in die Hitze-Vorwarnung ein
@@ -98,13 +103,13 @@ Die Defaults werden anhand des **Sensor-Typs** gesetzt, den du beim Einrichten w
 
 **Luftfeuchte in der Kiste (z. B. SNZB-02WD, % rel. Luftfeuchte)**:
 
-Sensoren, die im/auf dem Substrat liegen, messen die direkt darüberliegende Luftfeuchte. Bei feuchtem Wurmsubstrat liegen typische Werte deutlich höher als bei einem Bodenfeuchtesensor.
+Sensoren, die im/auf dem Substrat liegen, messen die direkt darüberliegende Luftfeuchte. Diese ist nur ein **indirekter Indikator** für den Zustand des Substrats und schwankt stark mit Belüftung und Deckelbauweise; die Wohlfühl-Bandbreite ist daher absichtlich weit gefasst, damit ein gut belüfteter Behälter mit 65–80 % RH nicht ständig „Zu trocken" meldet.
 
-- Vertrocknungsalarm: `<= 60 %`
-- Zu trocken: `< 75 %`
-- Etwas trocken: `75–84.9 %`
-- Optimal: `85–95 %`
-- Etwas feucht: `95.1–97 %`
+- Vertrocknungsalarm: `<= 40 %`
+- Zu trocken: `< 55 %`
+- Etwas trocken: `55–64.9 %`
+- Optimal: `65–92 %`
+- Etwas feucht: `92.1–97 %`
 - Zu nass: `97.1–98.9 %`
 - Ertrinkungsalarm: `>= 99 %`
 

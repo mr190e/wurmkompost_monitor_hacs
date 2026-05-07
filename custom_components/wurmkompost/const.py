@@ -74,9 +74,9 @@ DEFAULT_SUN_EXPOSURE = SUN_EXPOSURE_PARTIAL_SHADE
 DEFAULT_SUN_UPLIFT_FULL_SUN = 12.0
 DEFAULT_SUN_UPLIFT_PARTIAL_SHADE = 5.0
 
-# Type-specific default thresholds. Substrate moisture and in-bin air humidity
-# behave very differently; with a moist substrate the air RH directly above it
-# typically sits at 85-95 %, so an air sensor needs higher comfort bounds.
+# Type-specific default thresholds. Substrate moisture is what worms actually
+# experience; air RH above the substrate is only a proxy and varies widely with
+# ventilation, so the air-in-bin band is intentionally wide.
 HUMIDITY_DEFAULTS_BY_TYPE: dict[str, dict[str, float]] = {
     HUMIDITY_TYPE_SUBSTRATE: {
         CONF_HUMIDITY_FATAL_DRY: 40.0,
@@ -87,10 +87,10 @@ HUMIDITY_DEFAULTS_BY_TYPE: dict[str, dict[str, float]] = {
         CONF_HUMIDITY_FATAL_WET: 95.0,
     },
     HUMIDITY_TYPE_AIR_IN_BIN: {
-        CONF_HUMIDITY_FATAL_DRY: 60.0,
-        CONF_HUMIDITY_DRY: 75.0,
-        CONF_HUMIDITY_COMFORT_MIN: 85.0,
-        CONF_HUMIDITY_COMFORT_MAX: 95.0,
+        CONF_HUMIDITY_FATAL_DRY: 40.0,
+        CONF_HUMIDITY_DRY: 55.0,
+        CONF_HUMIDITY_COMFORT_MIN: 65.0,
+        CONF_HUMIDITY_COMFORT_MAX: 92.0,
         CONF_HUMIDITY_WET: 97.0,
         CONF_HUMIDITY_FATAL_WET: 99.0,
     },
