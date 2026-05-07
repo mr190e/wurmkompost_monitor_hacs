@@ -1,7 +1,7 @@
 {
   "domain": "wurmkompost",
   "name": "Wurmkompost Monitor",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "documentation": "https://github.com/mr190e/wurmkompost_monitor_hacs",
   "issue_tracker": "https://github.com/mr190e/wurmkompost_monitor_hacs/issues",
   "codeowners": ["@mr190e"],

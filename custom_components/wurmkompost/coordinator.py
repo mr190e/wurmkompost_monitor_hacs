@@ -23,6 +23,13 @@ from .const import (
     CONF_FORECAST_HOURS,
     CONF_FREEZE_TEMP,
     CONF_HEAT_WARNING_TEMP,
+    CONF_HUMIDITY_COMFORT_MAX,
+    CONF_HUMIDITY_COMFORT_MIN,
+    CONF_HUMIDITY_DRY,
+    CONF_HUMIDITY_FATAL_DRY,
+    CONF_HUMIDITY_FATAL_WET,
+    CONF_HUMIDITY_SENSOR,
+    CONF_HUMIDITY_WET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WARM_TEMP,
     CONF_WEATHER_ENTITY,
@@ -35,6 +42,12 @@ from .const import (
     DEFAULT_FORECAST_HOURS,
     DEFAULT_FREEZE_TEMP,
     DEFAULT_HEAT_WARNING_TEMP,
+    DEFAULT_HUMIDITY_COMFORT_MAX,
+    DEFAULT_HUMIDITY_COMFORT_MIN,
+    DEFAULT_HUMIDITY_DRY,
+    DEFAULT_HUMIDITY_FATAL_DRY,
+    DEFAULT_HUMIDITY_FATAL_WET,
+    DEFAULT_HUMIDITY_WET,
     DEFAULT_UPDATE_INTERVAL,
     DEFAULT_WARM_TEMP,
     FORECAST_COLD,
@@ -43,10 +56,27 @@ from .const import (
     FORECAST_HEAT_DEATH,
     FORECAST_LABELS,
     FORECAST_NONE,
+    HUMIDITY_COLORS,
+    HUMIDITY_COMFORT,
+    HUMIDITY_DRY,
+    HUMIDITY_FATAL_DRY,
+    HUMIDITY_FATAL_WET,
+    HUMIDITY_HIGH,
+    HUMIDITY_LABELS,
+    HUMIDITY_LOW,
+    HUMIDITY_NOT_CONFIGURED,
+    HUMIDITY_RECOMMENDATIONS,
+    HUMIDITY_SEVERITY,
+    HUMIDITY_UNKNOWN,
+    HUMIDITY_WET,
+    MOOD_BY_HUMIDITY,
     MOOD_BY_STATUS,
+    MOOD_COMFORT,
+    MOOD_DOUBLE_CRISIS,
     MOOD_EMOJIS,
     MOOD_LABELS,
     MOOD_MESSAGES,
+    MOOD_UNKNOWN,
     STATUS_COLD,
     STATUS_COLORS,
     STATUS_COMFORT,
@@ -58,6 +88,7 @@ from .const import (
     STATUS_RECOMMENDATIONS,
     STATUS_UNKNOWN,
     STATUS_WARM,
+    TEMP_SEVERITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -69,13 +100,20 @@ class WurmKompostData:
 
     compost_name: str
     temperature_entity: str
+    humidity_entity: str | None
     weather_entity: str
     current_temp_c: float | None
     current_temp_source_unit: str | None
+    current_humidity: float | None
+    current_humidity_source_unit: str | None
     status_key: str
     status_label: str
     recommendation: str
     status_color: str
+    humidity_status_key: str
+    humidity_status_label: str
+    humidity_recommendation: str
+    humidity_color: str
     mood_key: str
     mood_label: str
     mood_emoji: str
@@ -90,6 +128,8 @@ class WurmKompostData:
     hours_to_forecast_max: float | None
     frost_alarm: bool
     heat_alarm: bool
+    dry_alarm: bool
+    wet_alarm: bool
     forecast_cold_warning: bool
     forecast_heat_warning: bool
 
@@ -120,6 +160,11 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
         return str(self._get_option(CONF_TEMPERATURE_SENSOR, ""))
 
     @property
+    def humidity_entity(self) -> str | None:
+        value = self._get_option(CONF_HUMIDITY_SENSOR, "")
+        return str(value) if value else None
+
+    @property
     def weather_entity(self) -> str:
         return str(self._get_option(CONF_WEATHER_ENTITY, ""))
 
@@ -132,10 +177,14 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
             _LOGGER.debug("Source entity changed: %s", entity_id)
             self.hass.async_create_task(self.async_request_refresh())
 
+        tracked = [self.temperature_entity, self.weather_entity]
+        if self.humidity_entity:
+            tracked.append(self.humidity_entity)
+
         self._unsubscribers.append(
             async_track_state_change_event(
                 self.hass,
-                [self.temperature_entity, self.weather_entity],
+                tracked,
                 _handle_source_change,
             )
         )
@@ -156,7 +205,22 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
             current_state.state, current_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
         )
         status_key = self._classify_current_temp(current_temp_c)
-        mood_key = MOOD_BY_STATUS[status_key]
+
+        current_humidity: float | None = None
+        humidity_source_unit: str | None = None
+        humidity_status_key = HUMIDITY_NOT_CONFIGURED
+
+        if self.humidity_entity:
+            humidity_state = self.hass.states.get(self.humidity_entity)
+            if humidity_state is None:
+                _LOGGER.warning("Humidity entity not found: %s", self.humidity_entity)
+                humidity_status_key = HUMIDITY_UNKNOWN
+            else:
+                humidity_source_unit = humidity_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
+                current_humidity = _state_to_percent(humidity_state.state)
+                humidity_status_key = self._classify_humidity(current_humidity)
+
+        mood_key = self._combined_mood_key(status_key, humidity_status_key)
 
         forecast_min_c: float | None = None
         forecast_max_c: float | None = None
@@ -214,13 +278,20 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
         return WurmKompostData(
             compost_name=self.compost_name,
             temperature_entity=self.temperature_entity,
+            humidity_entity=self.humidity_entity,
             weather_entity=self.weather_entity,
             current_temp_c=None if current_temp_c is None else round(current_temp_c, 1),
             current_temp_source_unit=current_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT),
+            current_humidity=None if current_humidity is None else round(current_humidity, 1),
+            current_humidity_source_unit=humidity_source_unit,
             status_key=status_key,
             status_label=STATUS_LABELS[status_key],
             recommendation=STATUS_RECOMMENDATIONS[status_key],
             status_color=STATUS_COLORS[status_key],
+            humidity_status_key=humidity_status_key,
+            humidity_status_label=HUMIDITY_LABELS[humidity_status_key],
+            humidity_recommendation=HUMIDITY_RECOMMENDATIONS[humidity_status_key],
+            humidity_color=HUMIDITY_COLORS[humidity_status_key],
             mood_key=mood_key,
             mood_label=MOOD_LABELS[mood_key],
             mood_emoji=MOOD_EMOJIS[mood_key],
@@ -235,6 +306,8 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
             hours_to_forecast_max=hours_to_forecast_max,
             frost_alarm=status_key == STATUS_FREEZE,
             heat_alarm=status_key == STATUS_HEAT_DEATH,
+            dry_alarm=humidity_status_key == HUMIDITY_FATAL_DRY,
+            wet_alarm=humidity_status_key == HUMIDITY_FATAL_WET,
             forecast_cold_warning=forecast_warning_key in {FORECAST_COLD, FORECAST_FREEZE},
             forecast_heat_warning=forecast_warning_key in {FORECAST_HEAT, FORECAST_HEAT_DEATH},
         )
@@ -264,6 +337,56 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
         if current_temp_c <= fatal_heat_temp:
             return STATUS_HOT
         return STATUS_HEAT_DEATH
+
+    def _classify_humidity(self, humidity: float | None) -> str:
+        """Classify the current substrate humidity."""
+        if humidity is None:
+            return HUMIDITY_UNKNOWN
+
+        fatal_dry = float(self._get_option(CONF_HUMIDITY_FATAL_DRY, DEFAULT_HUMIDITY_FATAL_DRY))
+        dry = float(self._get_option(CONF_HUMIDITY_DRY, DEFAULT_HUMIDITY_DRY))
+        comfort_min = float(self._get_option(CONF_HUMIDITY_COMFORT_MIN, DEFAULT_HUMIDITY_COMFORT_MIN))
+        comfort_max = float(self._get_option(CONF_HUMIDITY_COMFORT_MAX, DEFAULT_HUMIDITY_COMFORT_MAX))
+        wet = float(self._get_option(CONF_HUMIDITY_WET, DEFAULT_HUMIDITY_WET))
+        fatal_wet = float(self._get_option(CONF_HUMIDITY_FATAL_WET, DEFAULT_HUMIDITY_FATAL_WET))
+
+        if humidity <= fatal_dry:
+            return HUMIDITY_FATAL_DRY
+        if humidity < dry:
+            return HUMIDITY_DRY
+        if humidity < comfort_min:
+            return HUMIDITY_LOW
+        if humidity <= comfort_max:
+            return HUMIDITY_COMFORT
+        if humidity <= wet:
+            return HUMIDITY_HIGH
+        if humidity < fatal_wet:
+            return HUMIDITY_WET
+        return HUMIDITY_FATAL_WET
+
+    def _combined_mood_key(self, status_key: str, humidity_key: str) -> str:
+        """Combine temperature- and humidity-based moods, picking the worst."""
+        temp_severity = TEMP_SEVERITY.get(status_key, 0)
+        humidity_severity = HUMIDITY_SEVERITY.get(humidity_key, 0)
+
+        if status_key == STATUS_UNKNOWN and humidity_key in {HUMIDITY_NOT_CONFIGURED, HUMIDITY_UNKNOWN}:
+            return MOOD_UNKNOWN
+
+        # Two simultaneous critical conditions get a special "double crisis" mood.
+        if temp_severity >= 3 and humidity_severity >= 3:
+            return MOOD_DOUBLE_CRISIS
+
+        if humidity_severity > temp_severity:
+            return MOOD_BY_HUMIDITY[humidity_key]
+
+        if temp_severity > humidity_severity:
+            return MOOD_BY_STATUS[status_key]
+
+        # Equal severity: prefer the actual deviation (humidity reported, then temp).
+        if humidity_severity > 0 and humidity_key not in {HUMIDITY_UNKNOWN, HUMIDITY_NOT_CONFIGURED}:
+            return MOOD_BY_HUMIDITY[humidity_key]
+
+        return MOOD_BY_STATUS.get(status_key, MOOD_COMFORT)
 
     def _classify_forecast(self, forecast_min_c: float | None, forecast_max_c: float | None) -> str:
         """Classify forecast-based warnings."""
@@ -318,6 +441,20 @@ def _state_to_celsius(state: str | None, unit: str | None) -> float | None:
     if state in {None, "unknown", "unavailable", "none"}:
         return None
     return _to_celsius(state, unit)
+
+
+def _state_to_percent(state: str | None) -> float | None:
+    """Parse a humidity/moisture state as percent. Accepts 0-1 or 0-100 ranges."""
+    if state in {None, "unknown", "unavailable", "none"}:
+        return None
+    try:
+        numeric = float(state)
+    except (TypeError, ValueError):
+        return None
+    # Some sensors emit a 0..1 fraction instead of 0..100. Normalize.
+    if 0 <= numeric <= 1:
+        return numeric * 100.0
+    return numeric
 
 
 def _hours_until(when: datetime | None) -> float | None:

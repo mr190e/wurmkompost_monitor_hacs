@@ -4,10 +4,11 @@
     "step": {
       "user": {
         "title": "Set up worm compost monitor",
-        "description": "Choose a temperature sensor and a weather entity for early warnings.",
+        "description": "Choose a temperature sensor, optionally a humidity sensor and a weather entity for early warnings.",
         "data": {
           "name": "Name",
           "temperature_sensor": "Temperature sensor",
+          "humidity_sensor": "Humidity sensor (optional)",
           "weather_entity": "Weather entity"
         }
       }
@@ -22,10 +23,11 @@
     "step": {
       "init": {
         "title": "Worm compost options",
-        "description": "Adjust entities and temperature thresholds.",
+        "description": "Adjust entities, temperature and humidity thresholds.",
         "data": {
           "compost_name": "Name",
           "temperature_sensor": "Temperature sensor",
+          "humidity_sensor": "Humidity sensor (optional)",
           "weather_entity": "Weather entity",
           "freeze_temp": "Freezing alarm at or below (°C)",
           "cold_temp": "Too cold below (°C)",
@@ -35,7 +37,13 @@
           "fatal_heat_temp": "Fatal heat above (°C)",
           "forecast_hours": "Forecast horizon (hours)",
           "cold_warning_buffer": "Cold warning buffer above freezing (°C)",
-          "heat_warning_temp": "Heat warning at or above (°C)"
+          "heat_warning_temp": "Heat warning at or above (°C)",
+          "humidity_fatal_dry": "Dry-out alarm at or below (%)",
+          "humidity_dry": "Too dry below (%)",
+          "humidity_comfort_min": "Comfort humidity from (%)",
+          "humidity_comfort_max": "Comfort humidity up to (%)",
+          "humidity_wet": "Too wet above (%)",
+          "humidity_fatal_wet": "Drowning alarm at or above (%)"
         }
       }
     }

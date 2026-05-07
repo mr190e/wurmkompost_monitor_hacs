@@ -1,30 +1,47 @@
 type: vertical-stack
 cards:
-  - type: gauge
-    entity: sensor.wurmkompost_temperatur
-    name: Wurmtemperatur
-    min: -5
-    max: 40
-    needle: true
-    severity:
-      green: 18
-      yellow: 29
-      red: 35
+  - type: horizontal-stack
+    cards:
+      - type: gauge
+        entity: sensor.wurmkompost_temperatur
+        name: Temperatur
+        min: -5
+        max: 40
+        needle: true
+        severity:
+          green: 18
+          yellow: 29
+          red: 35
+
+      - type: gauge
+        entity: sensor.wurmkompost_feuchtigkeit
+        name: Feuchtigkeit
+        min: 0
+        max: 100
+        needle: true
+        severity:
+          green: 70
+          yellow: 60
+          red: 40
 
   - type: markdown
     content: >-
       {% set emoji = state_attr('sensor.wurmkompost_wurmstimmung', 'emoji') or states('sensor.wurmkompost_wurmgesicht') %}
       {% set stimmung = states('sensor.wurmkompost_wurmstimmung') %}
       {% set status = states('sensor.wurmkompost_status') %}
+      {% set feucht_status = states('sensor.wurmkompost_feuchtigkeitsstatus') %}
       {% set botschaft = state_attr('sensor.wurmkompost_wurmstimmung', 'botschaft') %}
       {% set temp = states('sensor.wurmkompost_temperatur') %}
+      {% set feucht = states('sensor.wurmkompost_feuchtigkeit') %}
       # {{ emoji }}
 
       ## {{ stimmung }}
 
-      **Status:** {{ status }}
+      **Temperatur:** {{ status }} ({{ temp }} °C)
 
-      **Aktuell:** {{ temp }} °C
+      {% if feucht not in ['unknown', 'unavailable', 'none', None] %}
+      **Feuchtigkeit:** {{ feucht_status }} ({{ feucht }} %)
+      {% endif %}
 
       {{ botschaft }}
 
@@ -64,6 +81,24 @@ cards:
 
   - type: conditional
     conditions:
+      - entity: binary_sensor.wurmkompost_vertrocknungsalarm
+        state: "on"
+    card:
+      type: tile
+      entity: binary_sensor.wurmkompost_vertrocknungsalarm
+      name: 🏜️ Vertrocknungsalarm
+
+  - type: conditional
+    conditions:
+      - entity: binary_sensor.wurmkompost_ertrinkungsalarm
+        state: "on"
+    card:
+      type: tile
+      entity: binary_sensor.wurmkompost_ertrinkungsalarm
+      name: 🌊 Ertrinkungsalarm
+
+  - type: conditional
+    conditions:
       - entity: binary_sensor.wurmkompost_kaeltewarnung
         state: "on"
     card:
@@ -79,3 +114,21 @@ cards:
       type: tile
       entity: binary_sensor.wurmkompost_hitzewarnung
       name: 🥵 Hitzewarnung
+
+  - type: conditional
+    conditions:
+      - entity: binary_sensor.wurmkompost_trockenwarnung
+        state: "on"
+    card:
+      type: tile
+      entity: binary_sensor.wurmkompost_trockenwarnung
+      name: 💨 Trockenwarnung
+
+  - type: conditional
+    conditions:
+      - entity: binary_sensor.wurmkompost_nasswarnung
+        state: "on"
+    card:
+      type: tile
+      entity: binary_sensor.wurmkompost_nasswarnung
+      name: 💧 Nasswarnung

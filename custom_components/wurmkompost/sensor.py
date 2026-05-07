@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import FORECAST_ICONS, STATUS_ICONS
+from .const import FORECAST_ICONS, HUMIDITY_ICONS, STATUS_ICONS
 from .coordinator import WurmKompostCoordinator
 from .entity import WurmKompostEntity
 
@@ -19,17 +19,23 @@ async def async_setup_entry(
 ) -> None:
     """Set up Wurmkompost sensors."""
     coordinator: WurmKompostCoordinator = entry.runtime_data
-    async_add_entities(
-        [
-            WurmCurrentTemperatureSensor(coordinator),
-            WurmStatusSensor(coordinator),
-            WurmMoodSensor(coordinator),
-            WurmEmojiSensor(coordinator),
-            WurmForecastWarningSensor(coordinator),
-            WurmForecastMinSensor(coordinator),
-            WurmForecastMaxSensor(coordinator),
-        ]
-    )
+    entities: list[SensorEntity] = [
+        WurmCurrentTemperatureSensor(coordinator),
+        WurmStatusSensor(coordinator),
+        WurmMoodSensor(coordinator),
+        WurmEmojiSensor(coordinator),
+        WurmForecastWarningSensor(coordinator),
+        WurmForecastMinSensor(coordinator),
+        WurmForecastMaxSensor(coordinator),
+    ]
+    if coordinator.humidity_entity:
+        entities.extend(
+            [
+                WurmCurrentHumiditySensor(coordinator),
+                WurmHumidityStatusSensor(coordinator),
+            ]
+        )
+    async_add_entities(entities)
 
 
 class WurmCurrentTemperatureSensor(WurmKompostEntity, SensorEntity):
@@ -56,6 +62,29 @@ class WurmCurrentTemperatureSensor(WurmKompostEntity, SensorEntity):
         }
 
 
+class WurmCurrentHumiditySensor(WurmKompostEntity, SensorEntity):
+    _attr_device_class = SensorDeviceClass.HUMIDITY
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "current_humidity", "Feuchtigkeit")
+        self._attr_icon = "mdi:water-percent"
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.data.current_humidity
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "quelle": self.coordinator.data.humidity_entity,
+            "status": self.coordinator.data.humidity_status_label,
+            "farbe": self.coordinator.data.humidity_color,
+            "empfehlung": self.coordinator.data.humidity_recommendation,
+        }
+
+
 class WurmStatusSensor(WurmKompostEntity, SensorEntity):
     def __init__(self, coordinator: WurmKompostCoordinator) -> None:
         super().__init__(coordinator, "status", "Status")
@@ -72,8 +101,12 @@ class WurmStatusSensor(WurmKompostEntity, SensorEntity):
     def extra_state_attributes(self) -> dict:
         return {
             "temperature_c": self.coordinator.data.current_temp_c,
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
             "empfehlung": self.coordinator.data.recommendation,
+            "feuchtigkeit_empfehlung": self.coordinator.data.humidity_recommendation,
             "temperatursensor": self.coordinator.data.temperature_entity,
+            "feuchtigkeitssensor": self.coordinator.data.humidity_entity,
             "wetter_entity": self.coordinator.data.weather_entity,
             "vorwarnung": self.coordinator.data.forecast_warning_label,
             "prognose_minimum_c": self.coordinator.data.forecast_min_c,
@@ -84,6 +117,28 @@ class WurmStatusSensor(WurmKompostEntity, SensorEntity):
             "wurm_emoji": self.coordinator.data.mood_emoji,
             "wurmstimmung": self.coordinator.data.mood_label,
             "wurm_botschaft": self.coordinator.data.mood_message,
+        }
+
+
+class WurmHumidityStatusSensor(WurmKompostEntity, SensorEntity):
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "humidity_status", "Feuchtigkeitsstatus")
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.data.humidity_status_label
+
+    @property
+    def icon(self) -> str:
+        return HUMIDITY_ICONS[self.coordinator.data.humidity_status_key]
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
+            "empfehlung": self.coordinator.data.humidity_recommendation,
+            "feuchtigkeitssensor": self.coordinator.data.humidity_entity,
+            "farbe": self.coordinator.data.humidity_color,
         }
 
 
@@ -102,8 +157,11 @@ class WurmMoodSensor(WurmKompostEntity, SensorEntity):
             "emoji": self.coordinator.data.mood_emoji,
             "botschaft": self.coordinator.data.mood_message,
             "status": self.coordinator.data.status_label,
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
             "farbe": self.coordinator.data.status_color,
+            "feuchtigkeit_farbe": self.coordinator.data.humidity_color,
             "empfehlung": self.coordinator.data.recommendation,
+            "feuchtigkeit_empfehlung": self.coordinator.data.humidity_recommendation,
         }
 
 
@@ -125,7 +183,9 @@ class WurmEmojiSensor(WurmKompostEntity, SensorEntity):
             "wurmstimmung": self.coordinator.data.mood_label,
             "botschaft": self.coordinator.data.mood_message,
             "status": self.coordinator.data.status_label,
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
             "temperatur_c": self.coordinator.data.current_temp_c,
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
             "farbe": self.coordinator.data.status_color,
         }
 

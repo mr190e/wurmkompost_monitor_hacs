@@ -4,10 +4,11 @@
     "step": {
       "user": {
         "title": "Wurmkompost einrichten",
-        "description": "Wähle einen Temperatursensor und eine Wetter-Entität für die Vorwarnung.",
+        "description": "Wähle einen Temperatursensor, optional einen Feuchtigkeitssensor und eine Wetter-Entität für die Vorwarnung.",
         "data": {
           "name": "Name",
           "temperature_sensor": "Temperatursensor",
+          "humidity_sensor": "Feuchtigkeitssensor (optional)",
           "weather_entity": "Wetter-Entität"
         }
       }
@@ -22,10 +23,11 @@
     "step": {
       "init": {
         "title": "Wurmkompost Optionen",
-        "description": "Passe Sensoren und Temperaturgrenzen an.",
+        "description": "Passe Sensoren, Temperatur- und Feuchtigkeitsgrenzen an.",
         "data": {
           "compost_name": "Name",
           "temperature_sensor": "Temperatursensor",
+          "humidity_sensor": "Feuchtigkeitssensor (optional)",
           "weather_entity": "Wetter-Entität",
           "freeze_temp": "Erfrierungsgrenze (°C)",
           "cold_temp": "Zu kalt unter (°C)",
@@ -35,7 +37,13 @@
           "fatal_heat_temp": "Hitzetod ab (°C)",
           "forecast_hours": "Vorhersagehorizont (Stunden)",
           "cold_warning_buffer": "Kältewarnpuffer über Frost (°C)",
-          "heat_warning_temp": "Hitzewarnung ab (°C)"
+          "heat_warning_temp": "Hitzewarnung ab (°C)",
+          "humidity_fatal_dry": "Vertrocknungsalarm bei oder unter (%)",
+          "humidity_dry": "Zu trocken unter (%)",
+          "humidity_comfort_min": "Wohlfühlfeuchte ab (%)",
+          "humidity_comfort_max": "Wohlfühlfeuchte bis (%)",
+          "humidity_wet": "Zu nass ab (%)",
+          "humidity_fatal_wet": "Ertrinkungsalarm ab (%)"
         }
       }
     }

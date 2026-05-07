@@ -16,6 +16,13 @@ from .const import (
     CONF_FORECAST_HOURS,
     CONF_FREEZE_TEMP,
     CONF_HEAT_WARNING_TEMP,
+    CONF_HUMIDITY_COMFORT_MAX,
+    CONF_HUMIDITY_COMFORT_MIN,
+    CONF_HUMIDITY_DRY,
+    CONF_HUMIDITY_FATAL_DRY,
+    CONF_HUMIDITY_FATAL_WET,
+    CONF_HUMIDITY_SENSOR,
+    CONF_HUMIDITY_WET,
     CONF_TEMPERATURE_SENSOR,
     CONF_WARM_TEMP,
     CONF_WEATHER_ENTITY,
@@ -28,9 +35,17 @@ from .const import (
     DEFAULT_FORECAST_HOURS,
     DEFAULT_FREEZE_TEMP,
     DEFAULT_HEAT_WARNING_TEMP,
+    DEFAULT_HUMIDITY_COMFORT_MAX,
+    DEFAULT_HUMIDITY_COMFORT_MIN,
+    DEFAULT_HUMIDITY_DRY,
+    DEFAULT_HUMIDITY_FATAL_DRY,
+    DEFAULT_HUMIDITY_FATAL_WET,
+    DEFAULT_HUMIDITY_WET,
     DEFAULT_WARM_TEMP,
     DOMAIN,
 )
+
+NO_HUMIDITY_SENSOR = "__no_humidity__"
 
 
 def _friendly_entity_map(hass: HomeAssistant, domain: str, *, temperature_only: bool = False) -> dict[str, str]:
@@ -46,6 +61,17 @@ def _friendly_entity_map(hass: HomeAssistant, domain: str, *, temperature_only: 
     return entities
 
 
+def _humidity_entity_map(hass: HomeAssistant) -> dict[str, str]:
+    entities: dict[str, str] = {NO_HUMIDITY_SENSOR: "– kein Feuchtigkeitssensor –"}
+    for state in sorted(hass.states.async_all("sensor"), key=lambda item: item.name.lower()):
+        device_class = str(state.attributes.get("device_class", "")).lower()
+        unit = str(state.attributes.get("unit_of_measurement", "")).lower()
+        if device_class not in {"humidity", "moisture"} and unit not in {"%", "% rh", "%rh"}:
+            continue
+        entities[state.entity_id] = f"{state.name} ({state.entity_id})"
+    return entities
+
+
 class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Wurmkompost."""
 
@@ -56,6 +82,7 @@ class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
 
         temp_entities = _friendly_entity_map(self.hass, "sensor", temperature_only=True)
         weather_entities = _friendly_entity_map(self.hass, "weather")
+        humidity_entities = _humidity_entity_map(self.hass)
 
         if not temp_entities:
             return self.async_abort(reason="no_temperature_sensors")
@@ -68,9 +95,13 @@ class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             self._abort_if_unique_id_configured()
 
+            humidity_choice = user_input.get(CONF_HUMIDITY_SENSOR, NO_HUMIDITY_SENSOR)
+            humidity_value = "" if humidity_choice == NO_HUMIDITY_SENSOR else humidity_choice
+
             data = {
                 CONF_COMPOST_NAME: user_input[CONF_NAME],
                 CONF_TEMPERATURE_SENSOR: user_input[CONF_TEMPERATURE_SENSOR],
+                CONF_HUMIDITY_SENSOR: humidity_value,
                 CONF_WEATHER_ENTITY: user_input[CONF_WEATHER_ENTITY],
             }
             return self.async_create_entry(title=user_input[CONF_NAME], data=data)
@@ -78,6 +109,7 @@ class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
         defaults = {
             CONF_NAME: DEFAULT_COMPOST_NAME,
             CONF_TEMPERATURE_SENSOR: next(iter(temp_entities)),
+            CONF_HUMIDITY_SENSOR: NO_HUMIDITY_SENSOR,
             CONF_WEATHER_ENTITY: next(iter(weather_entities)),
         }
 
@@ -90,6 +122,10 @@ class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_TEMPERATURE_SENSOR,
                         default=defaults[CONF_TEMPERATURE_SENSOR],
                     ): vol.In(temp_entities),
+                    vol.Required(
+                        CONF_HUMIDITY_SENSOR,
+                        default=defaults[CONF_HUMIDITY_SENSOR],
+                    ): vol.In(humidity_entities),
                     vol.Required(
                         CONF_WEATHER_ENTITY,
                         default=defaults[CONF_WEATHER_ENTITY],
@@ -115,16 +151,25 @@ class WurmKompostOptionsFlow(OptionsFlow):
     async def async_step_init(self, user_input: dict | None = None):
         temp_entities = _friendly_entity_map(self.hass, "sensor", temperature_only=True)
         weather_entities = _friendly_entity_map(self.hass, "weather")
+        humidity_entities = _humidity_entity_map(self.hass)
 
         current_temp = self._value(CONF_TEMPERATURE_SENSOR, None)
+        current_humidity = self._value(CONF_HUMIDITY_SENSOR, "")
         current_weather = self._value(CONF_WEATHER_ENTITY, None)
         if current_temp and current_temp not in temp_entities:
             temp_entities[current_temp] = current_temp
+        if current_humidity and current_humidity not in humidity_entities:
+            humidity_entities[current_humidity] = current_humidity
         if current_weather and current_weather not in weather_entities:
             weather_entities[current_weather] = current_weather
 
         if user_input is not None:
+            humidity_choice = user_input.get(CONF_HUMIDITY_SENSOR, NO_HUMIDITY_SENSOR)
+            if humidity_choice == NO_HUMIDITY_SENSOR:
+                user_input[CONF_HUMIDITY_SENSOR] = ""
             return self.async_create_entry(title="", data=user_input)
+
+        humidity_default = current_humidity if current_humidity else NO_HUMIDITY_SENSOR
 
         return self.async_show_form(
             step_id="init",
@@ -138,6 +183,10 @@ class WurmKompostOptionsFlow(OptionsFlow):
                         CONF_TEMPERATURE_SENSOR,
                         default=self._value(CONF_TEMPERATURE_SENSOR, next(iter(temp_entities))),
                     ): vol.In(temp_entities),
+                    vol.Required(
+                        CONF_HUMIDITY_SENSOR,
+                        default=humidity_default,
+                    ): vol.In(humidity_entities),
                     vol.Required(
                         CONF_WEATHER_ENTITY,
                         default=self._value(CONF_WEATHER_ENTITY, next(iter(weather_entities))),
@@ -178,6 +227,30 @@ class WurmKompostOptionsFlow(OptionsFlow):
                         CONF_HEAT_WARNING_TEMP,
                         default=self._value(CONF_HEAT_WARNING_TEMP, DEFAULT_HEAT_WARNING_TEMP),
                     ): vol.Coerce(float),
+                    vol.Required(
+                        CONF_HUMIDITY_FATAL_DRY,
+                        default=self._value(CONF_HUMIDITY_FATAL_DRY, DEFAULT_HUMIDITY_FATAL_DRY),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+                    vol.Required(
+                        CONF_HUMIDITY_DRY,
+                        default=self._value(CONF_HUMIDITY_DRY, DEFAULT_HUMIDITY_DRY),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+                    vol.Required(
+                        CONF_HUMIDITY_COMFORT_MIN,
+                        default=self._value(CONF_HUMIDITY_COMFORT_MIN, DEFAULT_HUMIDITY_COMFORT_MIN),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+                    vol.Required(
+                        CONF_HUMIDITY_COMFORT_MAX,
+                        default=self._value(CONF_HUMIDITY_COMFORT_MAX, DEFAULT_HUMIDITY_COMFORT_MAX),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+                    vol.Required(
+                        CONF_HUMIDITY_WET,
+                        default=self._value(CONF_HUMIDITY_WET, DEFAULT_HUMIDITY_WET),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
+                    vol.Required(
+                        CONF_HUMIDITY_FATAL_WET,
+                        default=self._value(CONF_HUMIDITY_FATAL_WET, DEFAULT_HUMIDITY_FATAL_WET),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                 }
             ),
         )

@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import HUMIDITY_DRY, HUMIDITY_WET
 from .coordinator import WurmKompostCoordinator
 from .entity import WurmKompostEntity
 
@@ -16,14 +17,22 @@ async def async_setup_entry(
 ) -> None:
     """Set up Wurmkompost binary sensors."""
     coordinator: WurmKompostCoordinator = entry.runtime_data
-    async_add_entities(
-        [
-            WurmFrostAlarmBinarySensor(coordinator),
-            WurmHeatAlarmBinarySensor(coordinator),
-            WurmForecastColdWarningBinarySensor(coordinator),
-            WurmForecastHeatWarningBinarySensor(coordinator),
-        ]
-    )
+    entities: list[BinarySensorEntity] = [
+        WurmFrostAlarmBinarySensor(coordinator),
+        WurmHeatAlarmBinarySensor(coordinator),
+        WurmForecastColdWarningBinarySensor(coordinator),
+        WurmForecastHeatWarningBinarySensor(coordinator),
+    ]
+    if coordinator.humidity_entity:
+        entities.extend(
+            [
+                WurmDryAlarmBinarySensor(coordinator),
+                WurmWetAlarmBinarySensor(coordinator),
+                WurmDryWarningBinarySensor(coordinator),
+                WurmWetWarningBinarySensor(coordinator),
+            ]
+        )
+    async_add_entities(entities)
 
 
 class _WurmProblemBinarySensor(WurmKompostEntity, BinarySensorEntity):
@@ -67,6 +76,94 @@ class WurmHeatAlarmBinarySensor(_WurmProblemBinarySensor):
         return {
             "status": self.coordinator.data.status_label,
             "temperature_c": self.coordinator.data.current_temp_c,
+        }
+
+
+class WurmDryAlarmBinarySensor(_WurmProblemBinarySensor):
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "dry_alarm", "Vertrocknungsalarm")
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.dry_alarm
+
+    @property
+    def icon(self) -> str:
+        return "mdi:water-off" if self.is_on else "mdi:water-check"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
+            "empfehlung": self.coordinator.data.humidity_recommendation,
+        }
+
+
+class WurmWetAlarmBinarySensor(_WurmProblemBinarySensor):
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "wet_alarm", "Ertrinkungsalarm")
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.wet_alarm
+
+    @property
+    def icon(self) -> str:
+        return "mdi:water-alert" if self.is_on else "mdi:water-check"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
+            "empfehlung": self.coordinator.data.humidity_recommendation,
+        }
+
+
+class WurmDryWarningBinarySensor(_WurmProblemBinarySensor):
+    """Soft warning before the substrate hits the fatal-dry threshold."""
+
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "dry_warning", "Trockenwarnung")
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.humidity_status_key == HUMIDITY_DRY
+
+    @property
+    def icon(self) -> str:
+        return "mdi:water-minus" if self.is_on else "mdi:water-check"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
+            "empfehlung": self.coordinator.data.humidity_recommendation,
+        }
+
+
+class WurmWetWarningBinarySensor(_WurmProblemBinarySensor):
+    """Soft warning before the substrate hits the fatal-wet threshold."""
+
+    def __init__(self, coordinator: WurmKompostCoordinator) -> None:
+        super().__init__(coordinator, "wet_warning", "Nasswarnung")
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.data.humidity_status_key == HUMIDITY_WET
+
+    @property
+    def icon(self) -> str:
+        return "mdi:water-plus" if self.is_on else "mdi:water-check"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
+            "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
+            "empfehlung": self.coordinator.data.humidity_recommendation,
         }
 
 

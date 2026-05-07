@@ -9,6 +9,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 CONF_COMPOST_NAME = "compost_name"
 CONF_TEMPERATURE_SENSOR = "temperature_sensor"
+CONF_HUMIDITY_SENSOR = "humidity_sensor"
 CONF_WEATHER_ENTITY = "weather_entity"
 CONF_FREEZE_TEMP = "freeze_temp"
 CONF_COLD_TEMP = "cold_temp"
@@ -19,6 +20,13 @@ CONF_FATAL_HEAT_TEMP = "fatal_heat_temp"
 CONF_FORECAST_HOURS = "forecast_hours"
 CONF_COLD_WARNING_BUFFER = "cold_warning_buffer"
 CONF_HEAT_WARNING_TEMP = "heat_warning_temp"
+
+CONF_HUMIDITY_FATAL_DRY = "humidity_fatal_dry"
+CONF_HUMIDITY_DRY = "humidity_dry"
+CONF_HUMIDITY_COMFORT_MIN = "humidity_comfort_min"
+CONF_HUMIDITY_COMFORT_MAX = "humidity_comfort_max"
+CONF_HUMIDITY_WET = "humidity_wet"
+CONF_HUMIDITY_FATAL_WET = "humidity_fatal_wet"
 
 DEFAULT_COMPOST_NAME = "Wurmkompost"
 DEFAULT_FREEZE_TEMP = 0.0
@@ -31,6 +39,13 @@ DEFAULT_FORECAST_HOURS = 12
 DEFAULT_COLD_WARNING_BUFFER = 2.0
 DEFAULT_HEAT_WARNING_TEMP = 30.0
 
+DEFAULT_HUMIDITY_FATAL_DRY = 40.0
+DEFAULT_HUMIDITY_DRY = 60.0
+DEFAULT_HUMIDITY_COMFORT_MIN = 70.0
+DEFAULT_HUMIDITY_COMFORT_MAX = 85.0
+DEFAULT_HUMIDITY_WET = 90.0
+DEFAULT_HUMIDITY_FATAL_WET = 95.0
+
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=15)
 
 STATUS_FREEZE = "alarm_erfrieren"
@@ -41,6 +56,16 @@ STATUS_WARM = "warm"
 STATUS_HOT = "zu_warm"
 STATUS_HEAT_DEATH = "alarm_hitzetod"
 STATUS_UNKNOWN = "unbekannt"
+
+HUMIDITY_FATAL_DRY = "alarm_vertrocknet"
+HUMIDITY_DRY = "zu_trocken"
+HUMIDITY_LOW = "leicht_trocken"
+HUMIDITY_COMFORT = "feuchtigkeit_optimal"
+HUMIDITY_HIGH = "leicht_feucht"
+HUMIDITY_WET = "zu_nass"
+HUMIDITY_FATAL_WET = "alarm_ertrunken"
+HUMIDITY_UNKNOWN = "feuchtigkeit_unbekannt"
+HUMIDITY_NOT_CONFIGURED = "feuchtigkeit_nicht_konfiguriert"
 
 FORECAST_NONE = "keine_warnung"
 FORECAST_COLD = "kaeltewarnung"
@@ -56,6 +81,13 @@ MOOD_WARM = "leicht_warm"
 MOOD_HOT = "schwitzend"
 MOOD_HEAT_DEATH = "notfall"
 MOOD_UNKNOWN = "unklar"
+MOOD_FATAL_DRY = "vertrocknend"
+MOOD_DRY = "durstig"
+MOOD_LOW_HUMIDITY = "leicht_durstig"
+MOOD_HIGH_HUMIDITY = "feucht"
+MOOD_WET = "zu_nass"
+MOOD_FATAL_WET = "ertrinkend"
+MOOD_DOUBLE_CRISIS = "doppelter_notfall"
 
 STATUS_ORDER = [
     STATUS_FREEZE,
@@ -66,6 +98,18 @@ STATUS_ORDER = [
     STATUS_HOT,
     STATUS_HEAT_DEATH,
     STATUS_UNKNOWN,
+]
+
+HUMIDITY_ORDER = [
+    HUMIDITY_FATAL_DRY,
+    HUMIDITY_DRY,
+    HUMIDITY_LOW,
+    HUMIDITY_COMFORT,
+    HUMIDITY_HIGH,
+    HUMIDITY_WET,
+    HUMIDITY_FATAL_WET,
+    HUMIDITY_UNKNOWN,
+    HUMIDITY_NOT_CONFIGURED,
 ]
 
 FORECAST_ORDER = [
@@ -87,6 +131,18 @@ STATUS_LABELS: dict[str, str] = {
     STATUS_UNKNOWN: "Unbekannt",
 }
 
+HUMIDITY_LABELS: dict[str, str] = {
+    HUMIDITY_FATAL_DRY: "ALARM: Sie vertrocknen",
+    HUMIDITY_DRY: "Zu trocken",
+    HUMIDITY_LOW: "Etwas trocken",
+    HUMIDITY_COMFORT: "Feuchtigkeit optimal",
+    HUMIDITY_HIGH: "Etwas feucht",
+    HUMIDITY_WET: "Zu nass",
+    HUMIDITY_FATAL_WET: "ALARM: Sie ertrinken",
+    HUMIDITY_UNKNOWN: "Feuchtigkeit unbekannt",
+    HUMIDITY_NOT_CONFIGURED: "Kein Feuchtigkeitssensor",
+}
+
 STATUS_ICONS: dict[str, str] = {
     STATUS_FREEZE: "mdi:snowflake-alert",
     STATUS_COLD: "mdi:snowflake-thermometer",
@@ -96,6 +152,18 @@ STATUS_ICONS: dict[str, str] = {
     STATUS_HOT: "mdi:thermometer-high",
     STATUS_HEAT_DEATH: "mdi:fire-alert",
     STATUS_UNKNOWN: "mdi:help-circle-outline",
+}
+
+HUMIDITY_ICONS: dict[str, str] = {
+    HUMIDITY_FATAL_DRY: "mdi:water-off",
+    HUMIDITY_DRY: "mdi:water-alert",
+    HUMIDITY_LOW: "mdi:water-minus",
+    HUMIDITY_COMFORT: "mdi:water-check",
+    HUMIDITY_HIGH: "mdi:water-plus",
+    HUMIDITY_WET: "mdi:water-alert",
+    HUMIDITY_FATAL_WET: "mdi:water-alert-outline",
+    HUMIDITY_UNKNOWN: "mdi:help-circle-outline",
+    HUMIDITY_NOT_CONFIGURED: "mdi:water-remove-outline",
 }
 
 STATUS_RECOMMENDATIONS: dict[str, str] = {
@@ -109,6 +177,18 @@ STATUS_RECOMMENDATIONS: dict[str, str] = {
     STATUS_UNKNOWN: "Temperatursensor prüfen.",
 }
 
+HUMIDITY_RECOMMENDATIONS: dict[str, str] = {
+    HUMIDITY_FATAL_DRY: "Notfall: Substrat sofort gründlich befeuchten und mit feuchtem Material abdecken.",
+    HUMIDITY_DRY: "Mit Sprühflasche oder feuchtem Zeitungspapier nachfeuchten.",
+    HUMIDITY_LOW: "Etwas Wasser ergänzen und Verdunstung beobachten.",
+    HUMIDITY_COMFORT: "Feuchtigkeit ist im Idealbereich.",
+    HUMIDITY_HIGH: "Trockenes Material (Karton, Zeitung, Laub) untermischen.",
+    HUMIDITY_WET: "Belüftung verbessern und trockenes Strukturmaterial ergänzen, sonst wird es anaerob.",
+    HUMIDITY_FATAL_WET: "Sofort: Wasser ablaufen lassen und reichlich trockenes Material einarbeiten.",
+    HUMIDITY_UNKNOWN: "Feuchtigkeitssensor prüfen.",
+    HUMIDITY_NOT_CONFIGURED: "Kein Feuchtigkeitssensor konfiguriert. In den Optionen nachrüsten.",
+}
+
 STATUS_COLORS: dict[str, str] = {
     STATUS_FREEZE: "#1e88e5",
     STATUS_COLD: "#42a5f5",
@@ -118,6 +198,43 @@ STATUS_COLORS: dict[str, str] = {
     STATUS_HOT: "#fb8c00",
     STATUS_HEAT_DEATH: "#e53935",
     STATUS_UNKNOWN: "#9e9e9e",
+}
+
+HUMIDITY_COLORS: dict[str, str] = {
+    HUMIDITY_FATAL_DRY: "#bf360c",
+    HUMIDITY_DRY: "#e64a19",
+    HUMIDITY_LOW: "#ffb74d",
+    HUMIDITY_COMFORT: "#43a047",
+    HUMIDITY_HIGH: "#26a69a",
+    HUMIDITY_WET: "#0288d1",
+    HUMIDITY_FATAL_WET: "#01579b",
+    HUMIDITY_UNKNOWN: "#9e9e9e",
+    HUMIDITY_NOT_CONFIGURED: "#bdbdbd",
+}
+
+# Severity scale for combining temperature and humidity moods.
+#  0 = optimal, 1 = leichte Abweichung, 2 = deutlich problematisch, 3 = lebensbedrohlich
+TEMP_SEVERITY: dict[str, int] = {
+    STATUS_COMFORT: 0,
+    STATUS_COOL: 1,
+    STATUS_WARM: 1,
+    STATUS_COLD: 2,
+    STATUS_HOT: 2,
+    STATUS_FREEZE: 3,
+    STATUS_HEAT_DEATH: 3,
+    STATUS_UNKNOWN: 0,
+}
+
+HUMIDITY_SEVERITY: dict[str, int] = {
+    HUMIDITY_COMFORT: 0,
+    HUMIDITY_LOW: 1,
+    HUMIDITY_HIGH: 1,
+    HUMIDITY_DRY: 2,
+    HUMIDITY_WET: 2,
+    HUMIDITY_FATAL_DRY: 3,
+    HUMIDITY_FATAL_WET: 3,
+    HUMIDITY_UNKNOWN: 0,
+    HUMIDITY_NOT_CONFIGURED: 0,
 }
 
 MOOD_BY_STATUS: dict[str, str] = {
@@ -131,6 +248,18 @@ MOOD_BY_STATUS: dict[str, str] = {
     STATUS_UNKNOWN: MOOD_UNKNOWN,
 }
 
+MOOD_BY_HUMIDITY: dict[str, str] = {
+    HUMIDITY_FATAL_DRY: MOOD_FATAL_DRY,
+    HUMIDITY_DRY: MOOD_DRY,
+    HUMIDITY_LOW: MOOD_LOW_HUMIDITY,
+    HUMIDITY_COMFORT: MOOD_COMFORT,
+    HUMIDITY_HIGH: MOOD_HIGH_HUMIDITY,
+    HUMIDITY_WET: MOOD_WET,
+    HUMIDITY_FATAL_WET: MOOD_FATAL_WET,
+    HUMIDITY_UNKNOWN: MOOD_UNKNOWN,
+    HUMIDITY_NOT_CONFIGURED: MOOD_COMFORT,
+}
+
 MOOD_LABELS: dict[str, str] = {
     MOOD_FREEZE: "Erfrierend",
     MOOD_COLD: "Frierend",
@@ -140,6 +269,13 @@ MOOD_LABELS: dict[str, str] = {
     MOOD_HOT: "Schwitzend",
     MOOD_HEAT_DEATH: "Notfall",
     MOOD_UNKNOWN: "Unklar",
+    MOOD_FATAL_DRY: "Vertrocknend",
+    MOOD_DRY: "Durstig",
+    MOOD_LOW_HUMIDITY: "Leicht durstig",
+    MOOD_HIGH_HUMIDITY: "Feucht",
+    MOOD_WET: "Zu nass",
+    MOOD_FATAL_WET: "Ertrinkend",
+    MOOD_DOUBLE_CRISIS: "Doppelter Notfall",
 }
 
 MOOD_EMOJIS: dict[str, str] = {
@@ -151,6 +287,13 @@ MOOD_EMOJIS: dict[str, str] = {
     MOOD_HOT: "🪱🥵",
     MOOD_HEAT_DEATH: "🪱🔥",
     MOOD_UNKNOWN: "🪱❓",
+    MOOD_FATAL_DRY: "🪱🏜️",
+    MOOD_DRY: "🪱💨",
+    MOOD_LOW_HUMIDITY: "🪱🥤",
+    MOOD_HIGH_HUMIDITY: "🪱💧",
+    MOOD_WET: "🪱🌊",
+    MOOD_FATAL_WET: "🪱🆘",
+    MOOD_DOUBLE_CRISIS: "🪱☠️",
 }
 
 MOOD_MESSAGES: dict[str, str] = {
@@ -162,6 +305,13 @@ MOOD_MESSAGES: dict[str, str] = {
     MOOD_HOT: "Die Würmer schwitzen bildlich gesprochen schon – jetzt gegensteuern.",
     MOOD_HEAT_DEATH: "Notfall: Akute Überhitzung, sofort kühlen.",
     MOOD_UNKNOWN: "Keine verlässlichen Messdaten verfügbar.",
+    MOOD_FATAL_DRY: "Notfall: Das Substrat ist viel zu trocken – die Würmer vertrocknen.",
+    MOOD_DRY: "Den Würmern ist es zu trocken – nachfeuchten.",
+    MOOD_LOW_HUMIDITY: "Etwas zu trocken, gleich nachsprühen schadet nicht.",
+    MOOD_HIGH_HUMIDITY: "Recht feucht, aber noch im grünen Bereich.",
+    MOOD_WET: "Zu nass – Sauerstoffmangel droht, trockenes Material untermischen.",
+    MOOD_FATAL_WET: "Notfall: Wasserstau – die Würmer ertrinken bzw. ersticken.",
+    MOOD_DOUBLE_CRISIS: "Notfall: Mehrere kritische Bedingungen gleichzeitig – sofort eingreifen.",
 }
 
 FORECAST_LABELS: dict[str, str] = {
