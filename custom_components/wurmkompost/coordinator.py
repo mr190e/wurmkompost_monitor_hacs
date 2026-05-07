@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .const import (
+    CONDITION_SUN_FACTOR,
     CONF_COLD_TEMP,
     CONF_COLD_WARNING_BUFFER,
     CONF_COMFORT_MAX_TEMP,
@@ -29,7 +30,11 @@ from .const import (
     CONF_HUMIDITY_FATAL_DRY,
     CONF_HUMIDITY_FATAL_WET,
     CONF_HUMIDITY_SENSOR,
+    CONF_HUMIDITY_SENSOR_TYPE,
     CONF_HUMIDITY_WET,
+    CONF_SUN_EXPOSURE,
+    CONF_SUN_UPLIFT_FULL_SUN,
+    CONF_SUN_UPLIFT_PARTIAL_SHADE,
     CONF_TEMPERATURE_SENSOR,
     CONF_WARM_TEMP,
     CONF_WEATHER_ENTITY,
@@ -38,6 +43,7 @@ from .const import (
     DEFAULT_COMFORT_MAX_TEMP,
     DEFAULT_COMFORT_MIN_TEMP,
     DEFAULT_COMPOST_NAME,
+    DEFAULT_CONDITION_SUN_FACTOR,
     DEFAULT_FATAL_HEAT_TEMP,
     DEFAULT_FORECAST_HOURS,
     DEFAULT_FREEZE_TEMP,
@@ -47,7 +53,11 @@ from .const import (
     DEFAULT_HUMIDITY_DRY,
     DEFAULT_HUMIDITY_FATAL_DRY,
     DEFAULT_HUMIDITY_FATAL_WET,
+    DEFAULT_HUMIDITY_SENSOR_TYPE,
     DEFAULT_HUMIDITY_WET,
+    DEFAULT_SUN_EXPOSURE,
+    DEFAULT_SUN_UPLIFT_FULL_SUN,
+    DEFAULT_SUN_UPLIFT_PARTIAL_SHADE,
     DEFAULT_UPDATE_INTERVAL,
     DEFAULT_WARM_TEMP,
     FORECAST_COLD,
@@ -67,6 +77,7 @@ from .const import (
     HUMIDITY_NOT_CONFIGURED,
     HUMIDITY_RECOMMENDATIONS,
     HUMIDITY_SEVERITY,
+    HUMIDITY_TYPE_LABELS,
     HUMIDITY_UNKNOWN,
     HUMIDITY_WET,
     MOOD_BY_HUMIDITY,
@@ -88,6 +99,11 @@ from .const import (
     STATUS_RECOMMENDATIONS,
     STATUS_UNKNOWN,
     STATUS_WARM,
+    SUN_EXPOSURE_FULL_SUN,
+    SUN_EXPOSURE_LABELS,
+    SUN_EXPOSURE_PARTIAL_SHADE,
+    SUN_EXPOSURE_SHADE,
+    SUN_HOUR_FACTORS,
     TEMP_SEVERITY,
 )
 
@@ -122,10 +138,18 @@ class WurmKompostData:
     forecast_warning_label: str
     forecast_min_c: float | None
     forecast_max_c: float | None
+    forecast_min_ambient_c: float | None
+    forecast_max_ambient_c: float | None
+    forecast_max_sun_uplift_c: float | None
+    forecast_max_condition: str | None
     forecast_min_at: str | None
     forecast_max_at: str | None
     hours_to_forecast_min: float | None
     hours_to_forecast_max: float | None
+    sun_exposure_key: str
+    sun_exposure_label: str
+    humidity_sensor_type_key: str
+    humidity_sensor_type_label: str
     frost_alarm: bool
     heat_alarm: bool
     dry_alarm: bool
@@ -167,6 +191,20 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
     @property
     def weather_entity(self) -> str:
         return str(self._get_option(CONF_WEATHER_ENTITY, ""))
+
+    @property
+    def sun_exposure(self) -> str:
+        value = str(self._get_option(CONF_SUN_EXPOSURE, DEFAULT_SUN_EXPOSURE))
+        if value not in SUN_EXPOSURE_LABELS:
+            return DEFAULT_SUN_EXPOSURE
+        return value
+
+    @property
+    def humidity_sensor_type(self) -> str:
+        value = str(self._get_option(CONF_HUMIDITY_SENSOR_TYPE, DEFAULT_HUMIDITY_SENSOR_TYPE))
+        if value not in HUMIDITY_TYPE_LABELS:
+            return DEFAULT_HUMIDITY_SENSOR_TYPE
+        return value
 
     async def async_start(self) -> None:
         """Start listeners for faster updates."""
@@ -224,6 +262,10 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
 
         forecast_min_c: float | None = None
         forecast_max_c: float | None = None
+        forecast_min_ambient_c: float | None = None
+        forecast_max_ambient_c: float | None = None
+        forecast_max_sun_uplift_c: float | None = None
+        forecast_max_condition: str | None = None
         forecast_min_at: str | None = None
         forecast_max_at: str | None = None
         hours_to_forecast_min: float | None = None
@@ -255,20 +297,36 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
         forecast_hours = int(self._get_option(CONF_FORECAST_HOURS, DEFAULT_FORECAST_HOURS))
         sliced_items = forecast_items[:forecast_hours]
 
-        converted_forecasts: list[tuple[datetime | None, float]] = []
+        exposure = self.sun_exposure
+        max_uplift_full = float(
+            self._get_option(CONF_SUN_UPLIFT_FULL_SUN, DEFAULT_SUN_UPLIFT_FULL_SUN)
+        )
+        max_uplift_partial = float(
+            self._get_option(CONF_SUN_UPLIFT_PARTIAL_SHADE, DEFAULT_SUN_UPLIFT_PARTIAL_SHADE)
+        )
+
+        converted_forecasts: list[tuple[datetime | None, float, float, float, str | None]] = []
         for item in sliced_items:
             raw_temp = item.get("temperature")
-            temp_c = _to_celsius(raw_temp, weather_unit)
-            if temp_c is None:
+            ambient_c = _to_celsius(raw_temp, weather_unit)
+            if ambient_c is None:
                 continue
             when = dt_util.parse_datetime(item.get("datetime")) if item.get("datetime") else None
-            converted_forecasts.append((when, temp_c))
+            condition = item.get("condition")
+            uplift = _sun_uplift(when, condition, exposure, max_uplift_full, max_uplift_partial)
+            adjusted = ambient_c + uplift
+            converted_forecasts.append((when, adjusted, ambient_c, uplift, condition))
 
         if converted_forecasts:
-            min_item = min(converted_forecasts, key=lambda item: item[1])
+            # Cold warnings are based on ambient (sun does not warm at night), heat warnings on adjusted.
+            min_item = min(converted_forecasts, key=lambda item: item[2])
             max_item = max(converted_forecasts, key=lambda item: item[1])
-            forecast_min_c = round(min_item[1], 1)
+            forecast_min_c = round(min_item[2], 1)
+            forecast_min_ambient_c = forecast_min_c
             forecast_max_c = round(max_item[1], 1)
+            forecast_max_ambient_c = round(max_item[2], 1)
+            forecast_max_sun_uplift_c = round(max_item[3], 1)
+            forecast_max_condition = max_item[4]
             forecast_min_at = min_item[0].isoformat() if min_item[0] else None
             forecast_max_at = max_item[0].isoformat() if max_item[0] else None
             hours_to_forecast_min = _hours_until(min_item[0])
@@ -300,10 +358,18 @@ class WurmKompostCoordinator(DataUpdateCoordinator[WurmKompostData]):
             forecast_warning_label=FORECAST_LABELS[forecast_warning_key],
             forecast_min_c=forecast_min_c,
             forecast_max_c=forecast_max_c,
+            forecast_min_ambient_c=forecast_min_ambient_c,
+            forecast_max_ambient_c=forecast_max_ambient_c,
+            forecast_max_sun_uplift_c=forecast_max_sun_uplift_c,
+            forecast_max_condition=forecast_max_condition,
             forecast_min_at=forecast_min_at,
             forecast_max_at=forecast_max_at,
             hours_to_forecast_min=hours_to_forecast_min,
             hours_to_forecast_max=hours_to_forecast_max,
+            sun_exposure_key=exposure,
+            sun_exposure_label=SUN_EXPOSURE_LABELS[exposure],
+            humidity_sensor_type_key=self.humidity_sensor_type,
+            humidity_sensor_type_label=HUMIDITY_TYPE_LABELS[self.humidity_sensor_type],
             frost_alarm=status_key == STATUS_FREEZE,
             heat_alarm=status_key == STATUS_HEAT_DEATH,
             dry_alarm=humidity_status_key == HUMIDITY_FATAL_DRY,
@@ -462,3 +528,31 @@ def _hours_until(when: datetime | None) -> float | None:
         return None
     now = dt_util.now()
     return round((when - now).total_seconds() / 3600, 1)
+
+
+def _sun_uplift(
+    when: datetime | None,
+    condition: str | None,
+    exposure: str,
+    max_uplift_full_sun: float,
+    max_uplift_partial_shade: float,
+) -> float:
+    """Estimate °C added to ambient air temp due to direct sun on the bin."""
+    if when is None or exposure == SUN_EXPOSURE_SHADE:
+        return 0.0
+    if exposure == SUN_EXPOSURE_FULL_SUN:
+        max_uplift = max_uplift_full_sun
+    elif exposure == SUN_EXPOSURE_PARTIAL_SHADE:
+        max_uplift = max_uplift_partial_shade
+    else:
+        return 0.0
+    local_dt = dt_util.as_local(when)
+    hour_factor = SUN_HOUR_FACTORS.get(local_dt.hour, 0.0)
+    if hour_factor == 0.0:
+        return 0.0
+    cloud_factor = (
+        CONDITION_SUN_FACTOR.get(condition, DEFAULT_CONDITION_SUN_FACTOR)
+        if condition is not None
+        else DEFAULT_CONDITION_SUN_FACTOR
+    )
+    return max(0.0, max_uplift * hour_factor * cloud_factor)

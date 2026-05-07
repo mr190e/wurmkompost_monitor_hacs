@@ -27,6 +27,29 @@ CONF_HUMIDITY_COMFORT_MIN = "humidity_comfort_min"
 CONF_HUMIDITY_COMFORT_MAX = "humidity_comfort_max"
 CONF_HUMIDITY_WET = "humidity_wet"
 CONF_HUMIDITY_FATAL_WET = "humidity_fatal_wet"
+CONF_HUMIDITY_SENSOR_TYPE = "humidity_sensor_type"
+
+CONF_SUN_EXPOSURE = "sun_exposure"
+CONF_SUN_UPLIFT_FULL_SUN = "sun_uplift_full_sun"
+CONF_SUN_UPLIFT_PARTIAL_SHADE = "sun_uplift_partial_shade"
+
+HUMIDITY_TYPE_SUBSTRATE = "substrate"
+HUMIDITY_TYPE_AIR_IN_BIN = "air_in_bin"
+
+HUMIDITY_TYPE_LABELS: dict[str, str] = {
+    HUMIDITY_TYPE_SUBSTRATE: "Substratfeuchte (Bodenfeuchtesensor)",
+    HUMIDITY_TYPE_AIR_IN_BIN: "Luftfeuchte in der Kiste (z. B. SNZB-02WD)",
+}
+
+SUN_EXPOSURE_SHADE = "shade"
+SUN_EXPOSURE_PARTIAL_SHADE = "partial_shade"
+SUN_EXPOSURE_FULL_SUN = "full_sun"
+
+SUN_EXPOSURE_LABELS: dict[str, str] = {
+    SUN_EXPOSURE_SHADE: "Schatten",
+    SUN_EXPOSURE_PARTIAL_SHADE: "Halbschatten",
+    SUN_EXPOSURE_FULL_SUN: "Volle Sonne",
+}
 
 DEFAULT_COMPOST_NAME = "Wurmkompost"
 DEFAULT_FREEZE_TEMP = 0.0
@@ -45,6 +68,63 @@ DEFAULT_HUMIDITY_COMFORT_MIN = 70.0
 DEFAULT_HUMIDITY_COMFORT_MAX = 85.0
 DEFAULT_HUMIDITY_WET = 90.0
 DEFAULT_HUMIDITY_FATAL_WET = 95.0
+
+DEFAULT_HUMIDITY_SENSOR_TYPE = HUMIDITY_TYPE_SUBSTRATE
+DEFAULT_SUN_EXPOSURE = SUN_EXPOSURE_PARTIAL_SHADE
+DEFAULT_SUN_UPLIFT_FULL_SUN = 12.0
+DEFAULT_SUN_UPLIFT_PARTIAL_SHADE = 5.0
+
+# Type-specific default thresholds. Substrate moisture and in-bin air humidity
+# behave very differently; with a moist substrate the air RH directly above it
+# typically sits at 85-95 %, so an air sensor needs higher comfort bounds.
+HUMIDITY_DEFAULTS_BY_TYPE: dict[str, dict[str, float]] = {
+    HUMIDITY_TYPE_SUBSTRATE: {
+        CONF_HUMIDITY_FATAL_DRY: 40.0,
+        CONF_HUMIDITY_DRY: 60.0,
+        CONF_HUMIDITY_COMFORT_MIN: 70.0,
+        CONF_HUMIDITY_COMFORT_MAX: 85.0,
+        CONF_HUMIDITY_WET: 90.0,
+        CONF_HUMIDITY_FATAL_WET: 95.0,
+    },
+    HUMIDITY_TYPE_AIR_IN_BIN: {
+        CONF_HUMIDITY_FATAL_DRY: 60.0,
+        CONF_HUMIDITY_DRY: 75.0,
+        CONF_HUMIDITY_COMFORT_MIN: 85.0,
+        CONF_HUMIDITY_COMFORT_MAX: 95.0,
+        CONF_HUMIDITY_WET: 97.0,
+        CONF_HUMIDITY_FATAL_WET: 99.0,
+    },
+}
+
+# Stundenprofil 0..1 für die Sonnen-Intensität (lokale Zeit). Vor 8 und ab 19
+# Uhr null, Peak 12-14 Uhr.
+SUN_HOUR_FACTORS: dict[int, float] = {
+    8: 0.3, 9: 0.3,
+    10: 0.7, 11: 0.7,
+    12: 1.0, 13: 1.0, 14: 1.0,
+    15: 0.7, 16: 0.7,
+    17: 0.4, 18: 0.4,
+}
+
+# Wolken-/Wetterfaktor — wie viel der Sonneneinstrahlung durchkommt.
+CONDITION_SUN_FACTOR: dict[str, float] = {
+    "sunny": 1.0,
+    "clear-night": 0.0,
+    "partlycloudy": 0.6,
+    "cloudy": 0.3,
+    "fog": 0.1,
+    "rainy": 0.1,
+    "pouring": 0.0,
+    "snowy": 0.0,
+    "snowy-rainy": 0.0,
+    "hail": 0.0,
+    "windy": 0.7,
+    "windy-variant": 0.7,
+    "lightning": 0.3,
+    "lightning-rainy": 0.2,
+    "exceptional": 0.5,
+}
+DEFAULT_CONDITION_SUN_FACTOR = 0.5
 
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=15)
 

@@ -103,14 +103,18 @@ class WurmStatusSensor(WurmKompostEntity, SensorEntity):
             "temperature_c": self.coordinator.data.current_temp_c,
             "feuchtigkeit_prozent": self.coordinator.data.current_humidity,
             "feuchtigkeit_status": self.coordinator.data.humidity_status_label,
+            "feuchtigkeit_typ": self.coordinator.data.humidity_sensor_type_label,
             "empfehlung": self.coordinator.data.recommendation,
             "feuchtigkeit_empfehlung": self.coordinator.data.humidity_recommendation,
             "temperatursensor": self.coordinator.data.temperature_entity,
             "feuchtigkeitssensor": self.coordinator.data.humidity_entity,
             "wetter_entity": self.coordinator.data.weather_entity,
+            "sonnen_exposition": self.coordinator.data.sun_exposure_label,
             "vorwarnung": self.coordinator.data.forecast_warning_label,
             "prognose_minimum_c": self.coordinator.data.forecast_min_c,
             "prognose_maximum_c": self.coordinator.data.forecast_max_c,
+            "prognose_maximum_ambient_c": self.coordinator.data.forecast_max_ambient_c,
+            "prognose_maximum_sonnenzuschlag_c": self.coordinator.data.forecast_max_sun_uplift_c,
             "prognose_minimum_zeit": self.coordinator.data.forecast_min_at,
             "prognose_maximum_zeit": self.coordinator.data.forecast_max_at,
             "farbe": self.coordinator.data.status_color,
@@ -207,10 +211,14 @@ class WurmForecastWarningSensor(WurmKompostEntity, SensorEntity):
         return {
             "forecast_minimum_c": self.coordinator.data.forecast_min_c,
             "forecast_maximum_c": self.coordinator.data.forecast_max_c,
+            "forecast_maximum_ambient_c": self.coordinator.data.forecast_max_ambient_c,
+            "forecast_maximum_sonnenzuschlag_c": self.coordinator.data.forecast_max_sun_uplift_c,
+            "forecast_maximum_wetter": self.coordinator.data.forecast_max_condition,
             "forecast_minimum_in_stunden": self.coordinator.data.hours_to_forecast_min,
             "forecast_maximum_in_stunden": self.coordinator.data.hours_to_forecast_max,
             "forecast_minimum_zeit": self.coordinator.data.forecast_min_at,
             "forecast_maximum_zeit": self.coordinator.data.forecast_max_at,
+            "sonnen_exposition": self.coordinator.data.sun_exposure_label,
         }
 
 
@@ -253,4 +261,8 @@ class WurmForecastMaxSensor(WurmKompostEntity, SensorEntity):
         return {
             "zeit": self.coordinator.data.forecast_max_at,
             "in_stunden": self.coordinator.data.hours_to_forecast_max,
+            "ambient_c": self.coordinator.data.forecast_max_ambient_c,
+            "sonnenzuschlag_c": self.coordinator.data.forecast_max_sun_uplift_c,
+            "wetter": self.coordinator.data.forecast_max_condition,
+            "sonnen_exposition": self.coordinator.data.sun_exposure_label,
         }

@@ -4,12 +4,14 @@
     "step": {
       "user": {
         "title": "Set up worm compost monitor",
-        "description": "Choose a temperature sensor, optionally a humidity sensor and a weather entity for early warnings.",
+        "description": "Choose sensors, the humidity sensor type, the weather entity and the bin's location. Location and sensor type drive thresholds and heat-up warnings.",
         "data": {
           "name": "Name",
           "temperature_sensor": "Temperature sensor",
           "humidity_sensor": "Humidity sensor (optional)",
-          "weather_entity": "Weather entity"
+          "humidity_sensor_type": "Humidity sensor type",
+          "weather_entity": "Weather entity",
+          "sun_exposure": "Bin location"
         }
       }
     },
@@ -23,12 +25,14 @@
     "step": {
       "init": {
         "title": "Worm compost options",
-        "description": "Adjust entities, temperature and humidity thresholds.",
+        "description": "Adjust entities, location, temperature and humidity thresholds.",
         "data": {
           "compost_name": "Name",
           "temperature_sensor": "Temperature sensor",
           "humidity_sensor": "Humidity sensor (optional)",
+          "humidity_sensor_type": "Humidity sensor type",
           "weather_entity": "Weather entity",
+          "sun_exposure": "Bin location",
           "freeze_temp": "Freezing alarm at or below (°C)",
           "cold_temp": "Too cold below (°C)",
           "comfort_min_temp": "Comfort starts at (°C)",
@@ -38,6 +42,8 @@
           "forecast_hours": "Forecast horizon (hours)",
           "cold_warning_buffer": "Cold warning buffer above freezing (°C)",
           "heat_warning_temp": "Heat warning at or above (°C)",
+          "sun_uplift_full_sun": "Sun uplift at full sun, max (°C)",
+          "sun_uplift_partial_shade": "Sun uplift at partial shade, max (°C)",
           "humidity_fatal_dry": "Dry-out alarm at or below (%)",
           "humidity_dry": "Too dry below (%)",
           "humidity_comfort_min": "Comfort humidity from (%)",
@@ -45,6 +51,21 @@
           "humidity_wet": "Too wet above (%)",
           "humidity_fatal_wet": "Drowning alarm at or above (%)"
         }
+      }
+    }
+  },
+  "selector": {
+    "humidity_sensor_type": {
+      "options": {
+        "substrate": "Substrate moisture (soil sensor)",
+        "air_in_bin": "Air humidity inside the bin (e.g. SNZB-02WD)"
+      }
+    },
+    "sun_exposure": {
+      "options": {
+        "shade": "Shade",
+        "partial_shade": "Partial shade",
+        "full_sun": "Full sun"
       }
     }
   }

@@ -2,7 +2,14 @@
 
 HACS Custom Integration für Home Assistant Core / Container / OS.
 
-Diese Integration bewertet **Temperatur und Feuchtigkeit** in deinem Wurmgefäß und kombiniert die Werte mit der Wettervorhersage, um frühzeitig vor Kälte, Hitze, Vertrocknung und Staunässe zu warnen.
+Diese Integration bewertet **Temperatur und Feuchtigkeit** in deinem Wurmgefäß und kombiniert die Werte mit der Wettervorhersage **inklusive Sonnen-Uplift**, um frühzeitig vor Kälte, Hitze, Vertrocknung und Staunässe zu warnen.
+
+## Neu in Version 0.4.0
+
+- **Standort-Dropdown** (Schatten, Halbschatten, volle Sonne) – bezieht Sonneneinstrahlung in die Hitze-Vorwarnung ein
+- Sonnen-Uplift-Modell: Stundenprofil × Wolkenfaktor × Standort-Maximum, getrennt einstellbar für Halbschatten und volle Sonne
+- **Feuchtigkeits-Sensortyp** wählbar (Substratfeuchte oder Luftfeuchte in der Kiste, z. B. SNZB-02WD); typgerechte Default-Schwellen werden bei der Einrichtung vorausgewählt
+- Forecast-Sensor zeigt jetzt zusätzlich `ambient_c`, `sonnenzuschlag_c` und das Wetter zum prognostizierten Maximum
 
 ## Neu in Version 0.3.0
 
@@ -77,7 +84,9 @@ Diese Integration bewertet **Temperatur und Feuchtigkeit** in deinem Wurmgefäß
 
 ### Feuchtigkeit
 
-Die Defaults richten sich an Eisenia fetida (Kompostwürmer) und einem Substrat-/Boden­feuchtesensor. Wer einen Luftfeuchtesensor in der Wurmkiste verwendet, sollte die Grenzen je nach Standort etwas tiefer setzen.
+Die Defaults werden anhand des **Sensor-Typs** gesetzt, den du beim Einrichten wählst.
+
+**Substratfeuchte (Bodenfeuchtesensor, % Volumenwassergehalt)**:
 
 - Vertrocknungsalarm: `<= 40 %`
 - Zu trocken: `< 60 %`
@@ -87,6 +96,34 @@ Die Defaults richten sich an Eisenia fetida (Kompostwürmer) und einem Substrat-
 - Zu nass: `90.1–94.9 %`
 - Ertrinkungsalarm: `>= 95 %`
 
+**Luftfeuchte in der Kiste (z. B. SNZB-02WD, % rel. Luftfeuchte)**:
+
+Sensoren, die im/auf dem Substrat liegen, messen die direkt darüberliegende Luftfeuchte. Bei feuchtem Wurmsubstrat liegen typische Werte deutlich höher als bei einem Bodenfeuchtesensor.
+
+- Vertrocknungsalarm: `<= 60 %`
+- Zu trocken: `< 75 %`
+- Etwas trocken: `75–84.9 %`
+- Optimal: `85–95 %`
+- Etwas feucht: `95.1–97 %`
+- Zu nass: `97.1–98.9 %`
+- Ertrinkungsalarm: `>= 99 %`
+
+### Sonnen-Uplift (Mittagshitze)
+
+Die Wettervorhersage liefert die Lufttemperatur im Schatten. Eine Wurmkiste in der Sonne kann mittags deutlich heißer werden – die Integration rechnet das vorab in die Hitzewarnung ein:
+
+```
+Sonnen-Zuschlag = Standort-Max × Stundenprofil × Wolkenfaktor
+```
+
+- Standort-Max: Schatten = 0 °C, Halbschatten = 5 °C (Default), volle Sonne = 12 °C (Default)
+- Stundenprofil: 0 vor 8 / nach 19 Uhr, Peak 12–14 Uhr (lokale Zeit)
+- Wolkenfaktor aus dem `condition`-Feld der Vorhersage (sunny=1.0, partlycloudy=0.6, cloudy=0.3, rainy=0.1 …)
+
+Beispiel: Halbschatten, sunny, 13 Uhr, 28 °C Lufttemperatur → 28 + 5 × 1.0 × 1.0 = **33 °C** für die Klassifikation. Das löst frühzeitig die Hitzewarnung aus.
+
+Die Maximalwerte für Halbschatten und volle Sonne sind in den Optionen einstellbar.
+
 ## Installation über HACS
 
 1. Dieses Repository in GitHub anlegen oder aktualisieren.
@@ -95,7 +132,7 @@ Die Defaults richten sich an Eisenia fetida (Kompostwürmer) und einem Substrat-
 4. `Wurmkompost Monitor` installieren.
 5. Home Assistant neu starten.
 6. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Wurmkompost Monitor**.
-7. Im Dialog Temperatur-, optional Feuchtigkeits- und Wetter-Entity auswählen.
+7. Im Dialog Temperatur-, optional Feuchtigkeits-, Wetter-Entity sowie **Sensor-Typ** und **Standort** auswählen.
 
 Wer den Feuchtigkeitssensor erst später nachrüstet, kann ihn in den **Optionen** der Integration ergänzen – die zusätzlichen Entitäten erscheinen automatisch nach dem Reload.
 

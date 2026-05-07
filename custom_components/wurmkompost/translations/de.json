@@ -4,12 +4,14 @@
     "step": {
       "user": {
         "title": "Wurmkompost einrichten",
-        "description": "Wähle einen Temperatursensor, optional einen Feuchtigkeitssensor und eine Wetter-Entität für die Vorwarnung.",
+        "description": "Wähle Sensoren, Sensor-Typ der Feuchtigkeit, Wetter-Entität und den Standort des Komposts. Standort und Sensor-Typ beeinflussen Schwellen und Hitze-Vorwarnung.",
         "data": {
           "name": "Name",
           "temperature_sensor": "Temperatursensor",
           "humidity_sensor": "Feuchtigkeitssensor (optional)",
-          "weather_entity": "Wetter-Entität"
+          "humidity_sensor_type": "Feuchtigkeits-Sensor-Typ",
+          "weather_entity": "Wetter-Entität",
+          "sun_exposure": "Standort des Komposts"
         }
       }
     },
@@ -23,12 +25,14 @@
     "step": {
       "init": {
         "title": "Wurmkompost Optionen",
-        "description": "Passe Sensoren, Temperatur- und Feuchtigkeitsgrenzen an.",
+        "description": "Passe Sensoren, Standort, Temperatur- und Feuchtigkeitsgrenzen an.",
         "data": {
           "compost_name": "Name",
           "temperature_sensor": "Temperatursensor",
           "humidity_sensor": "Feuchtigkeitssensor (optional)",
+          "humidity_sensor_type": "Feuchtigkeits-Sensor-Typ",
           "weather_entity": "Wetter-Entität",
+          "sun_exposure": "Standort des Komposts",
           "freeze_temp": "Erfrierungsgrenze (°C)",
           "cold_temp": "Zu kalt unter (°C)",
           "comfort_min_temp": "Wohlfühlbereich ab (°C)",
@@ -38,6 +42,8 @@
           "forecast_hours": "Vorhersagehorizont (Stunden)",
           "cold_warning_buffer": "Kältewarnpuffer über Frost (°C)",
           "heat_warning_temp": "Hitzewarnung ab (°C)",
+          "sun_uplift_full_sun": "Sonnen-Zuschlag bei voller Sonne max. (°C)",
+          "sun_uplift_partial_shade": "Sonnen-Zuschlag bei Halbschatten max. (°C)",
           "humidity_fatal_dry": "Vertrocknungsalarm bei oder unter (%)",
           "humidity_dry": "Zu trocken unter (%)",
           "humidity_comfort_min": "Wohlfühlfeuchte ab (%)",
@@ -45,6 +51,21 @@
           "humidity_wet": "Zu nass ab (%)",
           "humidity_fatal_wet": "Ertrinkungsalarm ab (%)"
         }
+      }
+    }
+  },
+  "selector": {
+    "humidity_sensor_type": {
+      "options": {
+        "substrate": "Substratfeuchte (Bodenfeuchtesensor)",
+        "air_in_bin": "Luftfeuchte in der Kiste (z. B. SNZB-02WD)"
+      }
+    },
+    "sun_exposure": {
+      "options": {
+        "shade": "Schatten",
+        "partial_shade": "Halbschatten",
+        "full_sun": "Volle Sonne"
       }
     }
   }

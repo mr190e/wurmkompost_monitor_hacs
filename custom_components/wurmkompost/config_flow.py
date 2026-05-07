@@ -22,7 +22,11 @@ from .const import (
     CONF_HUMIDITY_FATAL_DRY,
     CONF_HUMIDITY_FATAL_WET,
     CONF_HUMIDITY_SENSOR,
+    CONF_HUMIDITY_SENSOR_TYPE,
     CONF_HUMIDITY_WET,
+    CONF_SUN_EXPOSURE,
+    CONF_SUN_UPLIFT_FULL_SUN,
+    CONF_SUN_UPLIFT_PARTIAL_SHADE,
     CONF_TEMPERATURE_SENSOR,
     CONF_WARM_TEMP,
     CONF_WEATHER_ENTITY,
@@ -35,14 +39,15 @@ from .const import (
     DEFAULT_FORECAST_HOURS,
     DEFAULT_FREEZE_TEMP,
     DEFAULT_HEAT_WARNING_TEMP,
-    DEFAULT_HUMIDITY_COMFORT_MAX,
-    DEFAULT_HUMIDITY_COMFORT_MIN,
-    DEFAULT_HUMIDITY_DRY,
-    DEFAULT_HUMIDITY_FATAL_DRY,
-    DEFAULT_HUMIDITY_FATAL_WET,
-    DEFAULT_HUMIDITY_WET,
+    DEFAULT_HUMIDITY_SENSOR_TYPE,
+    DEFAULT_SUN_EXPOSURE,
+    DEFAULT_SUN_UPLIFT_FULL_SUN,
+    DEFAULT_SUN_UPLIFT_PARTIAL_SHADE,
     DEFAULT_WARM_TEMP,
     DOMAIN,
+    HUMIDITY_DEFAULTS_BY_TYPE,
+    HUMIDITY_TYPE_LABELS,
+    SUN_EXPOSURE_LABELS,
 )
 
 NO_HUMIDITY_SENSOR = "__no_humidity__"
@@ -97,20 +102,28 @@ class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
 
             humidity_choice = user_input.get(CONF_HUMIDITY_SENSOR, NO_HUMIDITY_SENSOR)
             humidity_value = "" if humidity_choice == NO_HUMIDITY_SENSOR else humidity_choice
+            humidity_type = user_input.get(CONF_HUMIDITY_SENSOR_TYPE, DEFAULT_HUMIDITY_SENSOR_TYPE)
 
             data = {
                 CONF_COMPOST_NAME: user_input[CONF_NAME],
                 CONF_TEMPERATURE_SENSOR: user_input[CONF_TEMPERATURE_SENSOR],
                 CONF_HUMIDITY_SENSOR: humidity_value,
+                CONF_HUMIDITY_SENSOR_TYPE: humidity_type,
                 CONF_WEATHER_ENTITY: user_input[CONF_WEATHER_ENTITY],
+                CONF_SUN_EXPOSURE: user_input.get(CONF_SUN_EXPOSURE, DEFAULT_SUN_EXPOSURE),
             }
+            # Pre-seed humidity thresholds with sensible defaults for the chosen sensor type.
+            if humidity_value:
+                data.update(HUMIDITY_DEFAULTS_BY_TYPE.get(humidity_type, {}))
             return self.async_create_entry(title=user_input[CONF_NAME], data=data)
 
         defaults = {
             CONF_NAME: DEFAULT_COMPOST_NAME,
             CONF_TEMPERATURE_SENSOR: next(iter(temp_entities)),
             CONF_HUMIDITY_SENSOR: NO_HUMIDITY_SENSOR,
+            CONF_HUMIDITY_SENSOR_TYPE: DEFAULT_HUMIDITY_SENSOR_TYPE,
             CONF_WEATHER_ENTITY: next(iter(weather_entities)),
+            CONF_SUN_EXPOSURE: DEFAULT_SUN_EXPOSURE,
         }
 
         return self.async_show_form(
@@ -127,9 +140,17 @@ class WurmKompostConfigFlow(ConfigFlow, domain=DOMAIN):
                         default=defaults[CONF_HUMIDITY_SENSOR],
                     ): vol.In(humidity_entities),
                     vol.Required(
+                        CONF_HUMIDITY_SENSOR_TYPE,
+                        default=defaults[CONF_HUMIDITY_SENSOR_TYPE],
+                    ): vol.In(HUMIDITY_TYPE_LABELS),
+                    vol.Required(
                         CONF_WEATHER_ENTITY,
                         default=defaults[CONF_WEATHER_ENTITY],
                     ): vol.In(weather_entities),
+                    vol.Required(
+                        CONF_SUN_EXPOSURE,
+                        default=defaults[CONF_SUN_EXPOSURE],
+                    ): vol.In(SUN_EXPOSURE_LABELS),
                 }
             ),
             errors=errors,
@@ -170,6 +191,10 @@ class WurmKompostOptionsFlow(OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         humidity_default = current_humidity if current_humidity else NO_HUMIDITY_SENSOR
+        humidity_type_default = self._value(CONF_HUMIDITY_SENSOR_TYPE, DEFAULT_HUMIDITY_SENSOR_TYPE)
+        type_defaults = HUMIDITY_DEFAULTS_BY_TYPE.get(
+            humidity_type_default, HUMIDITY_DEFAULTS_BY_TYPE[DEFAULT_HUMIDITY_SENSOR_TYPE]
+        )
 
         return self.async_show_form(
             step_id="init",
@@ -188,9 +213,17 @@ class WurmKompostOptionsFlow(OptionsFlow):
                         default=humidity_default,
                     ): vol.In(humidity_entities),
                     vol.Required(
+                        CONF_HUMIDITY_SENSOR_TYPE,
+                        default=humidity_type_default,
+                    ): vol.In(HUMIDITY_TYPE_LABELS),
+                    vol.Required(
                         CONF_WEATHER_ENTITY,
                         default=self._value(CONF_WEATHER_ENTITY, next(iter(weather_entities))),
                     ): vol.In(weather_entities),
+                    vol.Required(
+                        CONF_SUN_EXPOSURE,
+                        default=self._value(CONF_SUN_EXPOSURE, DEFAULT_SUN_EXPOSURE),
+                    ): vol.In(SUN_EXPOSURE_LABELS),
                     vol.Required(
                         CONF_FREEZE_TEMP,
                         default=self._value(CONF_FREEZE_TEMP, DEFAULT_FREEZE_TEMP),
@@ -228,28 +261,46 @@ class WurmKompostOptionsFlow(OptionsFlow):
                         default=self._value(CONF_HEAT_WARNING_TEMP, DEFAULT_HEAT_WARNING_TEMP),
                     ): vol.Coerce(float),
                     vol.Required(
+                        CONF_SUN_UPLIFT_FULL_SUN,
+                        default=self._value(CONF_SUN_UPLIFT_FULL_SUN, DEFAULT_SUN_UPLIFT_FULL_SUN),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=30)),
+                    vol.Required(
+                        CONF_SUN_UPLIFT_PARTIAL_SHADE,
+                        default=self._value(
+                            CONF_SUN_UPLIFT_PARTIAL_SHADE, DEFAULT_SUN_UPLIFT_PARTIAL_SHADE
+                        ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=30)),
+                    vol.Required(
                         CONF_HUMIDITY_FATAL_DRY,
-                        default=self._value(CONF_HUMIDITY_FATAL_DRY, DEFAULT_HUMIDITY_FATAL_DRY),
+                        default=self._value(
+                            CONF_HUMIDITY_FATAL_DRY, type_defaults[CONF_HUMIDITY_FATAL_DRY]
+                        ),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                     vol.Required(
                         CONF_HUMIDITY_DRY,
-                        default=self._value(CONF_HUMIDITY_DRY, DEFAULT_HUMIDITY_DRY),
+                        default=self._value(CONF_HUMIDITY_DRY, type_defaults[CONF_HUMIDITY_DRY]),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                     vol.Required(
                         CONF_HUMIDITY_COMFORT_MIN,
-                        default=self._value(CONF_HUMIDITY_COMFORT_MIN, DEFAULT_HUMIDITY_COMFORT_MIN),
+                        default=self._value(
+                            CONF_HUMIDITY_COMFORT_MIN, type_defaults[CONF_HUMIDITY_COMFORT_MIN]
+                        ),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                     vol.Required(
                         CONF_HUMIDITY_COMFORT_MAX,
-                        default=self._value(CONF_HUMIDITY_COMFORT_MAX, DEFAULT_HUMIDITY_COMFORT_MAX),
+                        default=self._value(
+                            CONF_HUMIDITY_COMFORT_MAX, type_defaults[CONF_HUMIDITY_COMFORT_MAX]
+                        ),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                     vol.Required(
                         CONF_HUMIDITY_WET,
-                        default=self._value(CONF_HUMIDITY_WET, DEFAULT_HUMIDITY_WET),
+                        default=self._value(CONF_HUMIDITY_WET, type_defaults[CONF_HUMIDITY_WET]),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                     vol.Required(
                         CONF_HUMIDITY_FATAL_WET,
-                        default=self._value(CONF_HUMIDITY_FATAL_WET, DEFAULT_HUMIDITY_FATAL_WET),
+                        default=self._value(
+                            CONF_HUMIDITY_FATAL_WET, type_defaults[CONF_HUMIDITY_FATAL_WET]
+                        ),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0, max=100)),
                 }
             ),
